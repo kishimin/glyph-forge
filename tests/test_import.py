@@ -1,2 +1,2 @@
 def test_import():
-    import glyph_forge
+    __import__("glyph_forge")
