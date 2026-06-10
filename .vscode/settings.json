@@ -2,11 +2,13 @@
   "cSpell.words": [
     "addopts",
     "autoflake",
+    "docstrings",
     "isort",
     "kishimin",
     "mypy",
     "ncipollo",
     "pytest",
+    "Pythonic",
     "pythonpath",
     "setuptools",
     "testpaths"
