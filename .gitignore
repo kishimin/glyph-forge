@@ -1,2 +1,13 @@
 # log
 log/
+
+# Python
+__pycache__/
+
+# Test / Coverage
+.pytest_cache/
+.coverage
+src/*.egg-info/
+
+# .vscode
+.vscode/
