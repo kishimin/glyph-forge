@@ -2,7 +2,7 @@
 log/
 
 # Python
-__pychache__/
+__pycache__/
 
 # Test / Coverage
 .pytest_cache/
