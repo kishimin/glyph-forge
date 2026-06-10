@@ -1,3 +1,14 @@
 {
-  "cSpell.words": ["addopts", "kishimin", "pytest", "pythonpath", "testpaths"]
+  "cSpell.words": [
+    "addopts",
+    "autoflake",
+    "isort",
+    "kishimin",
+    "mypy",
+    "ncipollo",
+    "pytest",
+    "pythonpath",
+    "setuptools",
+    "testpaths"
+  ]
 }
