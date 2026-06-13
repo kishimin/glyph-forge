@@ -1,4 +1,4 @@
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 import numpy as np
 
 def img_2_gray_list(input_img: Image.Image) -> list[int]:
