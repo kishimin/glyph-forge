@@ -1,7 +1,7 @@
 from PIL import Image, ImageDraw, ImageFont
 from pathlib import Path
 
-def str2img(input_str: str, horizontal_length: int, vertical_length: int, char_size: int) -> Image:
+def str_2_img(input_str: str, horizontal_length: int, vertical_length: int, char_size: int) -> Image.Image:
     """Convert the given string into an image
 
     Args:
@@ -11,7 +11,7 @@ def str2img(input_str: str, horizontal_length: int, vertical_length: int, char_s
         char_size (int)
 
     Returns:
-        Image
+        Image.Image
     """
     img = Image.new("RGBA", (char_size * horizontal_length, char_size * vertical_length) , "white")
     draw = ImageDraw.Draw(img)
