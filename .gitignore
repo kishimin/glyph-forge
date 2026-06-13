@@ -3,6 +3,7 @@ log/
 
 # Python
 __pycache__/
+dist/
 
 # Test / Coverage
 .pytest_cache/
