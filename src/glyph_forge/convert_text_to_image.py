@@ -22,11 +22,11 @@ def text_2_img(input_text: str, horizontal_len: int, vertical_len: int, text_siz
     # Draw characters one by one
     horizontal_count = 0
     vertical_count = 0
-    for char in input_text:
+    for text in input_text:
         if vertical_count >= vertical_len:
             break
         # Draw one character at a time in the specified position
-        draw.text((horizontal_count * text_size, vertical_count * text_size), char, fill=(0, 0, 0), font=font)
+        draw.text((horizontal_count * text_size, vertical_count * text_size), text, fill=(0, 0, 0), font=font)
         horizontal_count += 1
         if horizontal_count >= horizontal_len:
             horizontal_count = 0
