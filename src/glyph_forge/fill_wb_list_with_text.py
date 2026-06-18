@@ -14,7 +14,7 @@ def infinity_gen_text(text: str) -> Generator[str, None, None]:
         for s in text:
             yield s
 
-def wb_list_2_wb_char_list(input_wb_list: list[list[int]], inner_text: str, outer_text: str) -> list[list[str]]:
+def wb_list_2_wb_text_list(input_wb_list: list[list[int]], inner_text: str, outer_text: str) -> list[list[str]]:
     """Return a two-dimensional list where the black and white cells are filled with the specified strings.
         White cells are filled with outer_str.
         Black cells are filled with inner_str.
