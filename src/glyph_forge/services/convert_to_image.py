@@ -1,10 +1,10 @@
 from PIL import Image
-from glyph_forge.convert_text_to_image import text_2_img
-from glyph_forge.convert_image_to_01_list import (
+from glyph_forge.services.convert_text_to_image import text_2_img
+from glyph_forge.services.convert_image_to_01_list import (
     gray_list_2_wb_list,
     img_2_gray_list
 )
-from glyph_forge.fill_wb_list_with_text import wb_list_2_wb_text_list
+from glyph_forge.services.fill_wb_list_with_text import wb_list_2_wb_text_list
 
 def text_2_text_img(flame_text: str, inner_text: str, outer_text: str, horizontal_len: int, vertical_len: int, text_size: int, final_text_size: int) -> Image.Image:
     """Execute the processing in batches and save the resulting list of characters as an image
