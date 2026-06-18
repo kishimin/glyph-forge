@@ -12,3 +12,6 @@ src/*.egg-info/
 
 # .vscode
 .vscode/
+
+# output
+output/
