@@ -3,6 +3,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field
 
 from glyph_forge.services.settings import (
+    DEFAULT_FRAME_CELL_PADDING_RATIO,
     DEFAULT_FRAME_FONT_SIZE,
     DEFAULT_MAX_CHARS_PER_LINE,
     DEFAULT_OUTPUT_FONT_SIZE,
@@ -25,6 +26,9 @@ class GenerateImageRequest(BaseModel):
     max_chars_per_line: PositiveInt = DEFAULT_MAX_CHARS_PER_LINE
     frame_font_size: PositiveInt = DEFAULT_FRAME_FONT_SIZE
     output_font_size: PositiveInt = DEFAULT_OUTPUT_FONT_SIZE
+    frame_cell_padding_ratio: Annotated[float, Field(ge=0)] = (
+        DEFAULT_FRAME_CELL_PADDING_RATIO
+    )
     inner_color: RgbColor = DEFAULT_TEXT_COLOR
     outer_color: RgbColor = DEFAULT_TEXT_COLOR
 
@@ -33,6 +37,7 @@ class GenerateImageRequest(BaseModel):
             max_chars_per_line=self.max_chars_per_line,
             frame_font_size=self.frame_font_size,
             output_font_size=self.output_font_size,
+            frame_cell_padding_ratio=self.frame_cell_padding_ratio,
             inner_color=self.inner_color,
             outer_color=self.outer_color,
         )

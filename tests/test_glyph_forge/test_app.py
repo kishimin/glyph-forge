@@ -34,6 +34,46 @@ def test_generate_image_accepts_compact_request():
     assert response.content.startswith(b"\x89PNG")
 
 
+def test_generate_x_icon_image_returns_png():
+    client = TestClient(app)
+
+    response = client.post(
+        "/images/x-icon",
+        json={
+            "frame_text": "FRAME_TEXT_SAMPLE",
+            "inner_text": "INNER_TEXT_SAMPLE",
+            "outer_text": "OUTER_TEXT_SAMPLE",
+            "inner_color": [255, 183, 197],
+            "outer_color": [255, 0, 0],
+            "output_font_size": 24,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.content.startswith(b"\x89PNG")
+
+
+def test_generate_background_image_returns_png():
+    client = TestClient(app)
+
+    response = client.post(
+        "/images/background",
+        json={
+            "frame_text": "FRAME_TEXT_SAMPLE",
+            "inner_text": "INNER_TEXT_SAMPLE",
+            "outer_text": "OUTER_TEXT_SAMPLE",
+            "inner_color": [255, 183, 197],
+            "outer_color": [255, 0, 0],
+            "output_font_size": 24,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.content.startswith(b"\x89PNG")
+
+
 def test_generate_image_rejects_non_positive_options():
     client = TestClient(app)
 
