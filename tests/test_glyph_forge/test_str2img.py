@@ -14,3 +14,20 @@ def test_text_2_img_draws_text_on_white_background():
 
     assert colors is not None
     assert len(colors) > 1
+
+
+def test_text_2_img_centers_character_in_cell():
+    img = text_2_img(input_text="A", horizontal_len=1, vertical_len=1, text_size=100)
+    rgb_img = img.convert("RGB")
+    drawn_pixels = [
+        (x, y)
+        for y in range(img.height)
+        for x in range(img.width)
+        if rgb_img.getpixel((x, y)) != (255, 255, 255)
+    ]
+
+    left = min(x for x, _ in drawn_pixels)
+    right = max(x for x, _ in drawn_pixels)
+
+    assert left > 10
+    assert img.width - right - 1 > 10
