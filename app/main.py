@@ -7,12 +7,17 @@ from glyph_forge.services.convert_to_image import text_2_text_img
 
 app = FastAPI()
 
+
 @app.post("/images")
 def generate_image(generateImageRequest: GenerateImageRequest):
     if not generateImageRequest.inner_text:
-        raise HTTPException(status_code=422, detail="Enter a non-empty value for inner_text")
+        raise HTTPException(
+            status_code=422, detail="Enter a non-empty value for inner_text"
+        )
     if not generateImageRequest.outer_text:
-        raise HTTPException(status_code=422, detail="Enter a non-empty value for outer_text")
+        raise HTTPException(
+            status_code=422, detail="Enter a non-empty value for outer_text"
+        )
     img = text_2_text_img(
         flame_text=generateImageRequest.frame_text,
         inner_text=generateImageRequest.inner_text,

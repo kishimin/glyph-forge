@@ -2,7 +2,9 @@ from glyph_forge.services.convert_text_to_image import text_2_img
 
 
 def test_text_2_img_returns_image_with_grid_size():
-    img = text_2_img(input_text="勝利友情努力", horizontal_len=2, vertical_len=3, text_size=50)
+    img = text_2_img(
+        input_text="勝利友情努力", horizontal_len=2, vertical_len=3, text_size=50
+    )
 
     assert img.size == (100, 150)
 

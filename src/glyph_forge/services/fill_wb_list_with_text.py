@@ -1,6 +1,7 @@
 from itertools import cycle
 from typing import Generator
 
+
 def infinity_gen_text(text: str) -> Generator[str, None, None]:
     """A generator that extracts characters from a string one by one.
         It repeats using a semi-infinite loop.
@@ -13,7 +14,10 @@ def infinity_gen_text(text: str) -> Generator[str, None, None]:
     """
     yield from cycle(text)
 
-def wb_list_2_wb_text_list(input_wb_list: list[list[int]], inner_text: str, outer_text: str) -> list[list[str]]:
+
+def wb_list_2_wb_text_list(
+    input_wb_list: list[list[int]], inner_text: str, outer_text: str
+) -> list[list[str]]:
     """Return a two-dimensional list where the black and white cells are filled with the specified strings.
         White cells are filled with outer_str.
         Black cells are filled with inner_str.

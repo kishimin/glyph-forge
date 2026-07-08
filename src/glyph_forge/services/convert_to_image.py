@@ -1,8 +1,12 @@
 from PIL import Image
-from glyph_forge.services.convert_text_to_image import split_text_lines, text_2_img, text_grid_2_img
+from glyph_forge.services.convert_text_to_image import (
+    split_text_lines,
+    text_2_img,
+    text_grid_2_img,
+)
 from glyph_forge.services.convert_image_to_01_list import (
     gray_list_2_wb_list,
-    img_2_gray_list
+    img_2_gray_list,
 )
 from glyph_forge.services.fill_wb_list_with_text import wb_list_2_wb_text_list
 from glyph_forge.services.settings import GlyphForgeConfig

@@ -25,7 +25,7 @@ def img_2_gray_list(input_img: Image.Image) -> list[list[float]]:
 def gray_list_2_wb_list(input_gray_list: list[list[float]]) -> list[list[int]]:
     """Convert the provided grayscale image into a binary image where white = 1 and black = 0.
         To prevent images with predominantly black areas from becoming entirely black,
-        or images with light colors from becoming entirely white, 
+        or images with light colors from becoming entirely white,
         calculate the average value as a threshold and use that threshold to datetime
         the value of each pixel.
         As a result, list areas will not be converted entirely to white, nor will dark
