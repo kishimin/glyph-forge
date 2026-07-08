@@ -36,7 +36,7 @@ def text_2_text_img(
     *,
     config: GlyphForgeConfig | None = None,
 ) -> Image.Image:
-    """Execute the processing in batches and save the resulting list of characters as an image
+    """Convert frame text into an image filled with inner and outer text.
 
     Args:
         flame_text (str)

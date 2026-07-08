@@ -9,8 +9,9 @@ from glyph_forge.services.settings import (
 
 
 def img_2_gray_list(input_img: Image.Image) -> list[list[float]]:
-    """Converts the provided image into a grayscale(white = 1, gray = 0.5, black = 0)
-        It is designed to handle even color images.
+    """Convert the provided image into a grayscale list.
+
+    It is designed to handle even color images.
 
     Args:
         input_img (Image.Image)
@@ -23,13 +24,10 @@ def img_2_gray_list(input_img: Image.Image) -> list[list[float]]:
 
 
 def gray_list_2_wb_list(input_gray_list: list[list[float]]) -> list[list[int]]:
-    """Convert the provided grayscale image into a binary image where white = 1 and black = 0.
-        To prevent images with predominantly black areas from becoming entirely black,
-        or images with light colors from becoming entirely white,
-        calculate the average value as a threshold and use that threshold to datetime
-        the value of each pixel.
-        As a result, list areas will not be converted entirely to white, nor will dark
-        areas be converted entirely to black.
+    """Convert grayscale values into a binary black-and-white image.
+
+    The average value is used as a threshold. This prevents predominantly
+    black or light images from being converted entirely to one value.
 
     Args:
         input_gray_list (list[int])

@@ -18,10 +18,10 @@ def infinity_gen_text(text: str) -> Generator[str, None, None]:
 def wb_list_2_wb_text_list(
     input_wb_list: list[list[int]], inner_text: str, outer_text: str
 ) -> list[list[str]]:
-    """Return a two-dimensional list where the black and white cells are filled with the specified strings.
-        White cells are filled with outer_str.
-        Black cells are filled with inner_str.
-        It is preferable to use characters and fonts that are space-filling and monospaced.
+    """Return a two-dimensional list filled with the specified strings.
+
+    White cells are filled with outer_str. Black cells are filled with
+    inner_str. Space-filling monospaced characters work best.
 
     Args:
         input_wb_list (list[list[int]])
