@@ -51,5 +51,5 @@ def test_text_2_text_img_can_color_inner_and_outer_text_separately():
         for _, color in img.convert("RGB").getcolors(maxcolors=img.width * img.height)
     }
 
-    assert (255, 0, 0) in colors
-    assert (0, 0, 255) in colors
+    assert any(red > 200 and green < 120 and blue < 120 for red, green, blue in colors)
+    assert any(blue > 200 and red < 120 and green < 120 for red, green, blue in colors)

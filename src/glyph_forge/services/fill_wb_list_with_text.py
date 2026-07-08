@@ -1,3 +1,4 @@
+from itertools import cycle
 from typing import Generator
 
 def infinity_gen_text(text: str) -> Generator[str, None, None]:
@@ -10,9 +11,7 @@ def infinity_gen_text(text: str) -> Generator[str, None, None]:
     Yields:
         Generator[str, None, None]
     """
-    for _ in range(1000000000):
-        for s in text:
-            yield s
+    yield from cycle(text)
 
 def wb_list_2_wb_text_list(input_wb_list: list[list[int]], inner_text: str, outer_text: str) -> list[list[str]]:
     """Return a two-dimensional list where the black and white cells are filled with the specified strings.
