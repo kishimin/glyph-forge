@@ -1,10 +1,10 @@
 autoflake==2.3.3
 black==24.4.2
-fastapi=0.138.1
+fastapi==0.138.1
 flake8==7.0.0
 isort==5.13.2
 matplotlib==3.8.4
-numpy=1.26.4
+numpy==1.26.4
 pillow==10.3.0
 pytest==7.4.4
 pytest-cov==7.0.0
