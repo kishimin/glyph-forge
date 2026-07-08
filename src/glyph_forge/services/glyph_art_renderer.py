@@ -3,10 +3,6 @@ from math import ceil, floor
 from PIL import Image
 
 from glyph_forge.services.glyph_text_grid import binary_grid_to_text_grid
-from glyph_forge.services.image_threshold import (
-    grayscale_grid_to_binary_grid,
-    image_to_grayscale_grid,
-)
 from glyph_forge.services.settings import (
     DEFAULT_BACKGROUND_SIZE,
     DEFAULT_CANVAS_MARGIN_RATIO,
@@ -119,6 +115,18 @@ def _with_visible_layout(
     )
 
 
+def _frame_image_to_binary_grid(frame_img: Image.Image) -> list[list[int]]:
+    rgb_img = frame_img.convert("RGB")
+    background_color = rgb_img.getpixel((0, 0))
+    return [
+        [
+            1 if rgb_img.getpixel((x, y)) == background_color else 0
+            for x in range(rgb_img.width)
+        ]
+        for y in range(rgb_img.height)
+    ]
+
+
 def render_glyph_art_image(
     frame_text: str,
     inner_text: str,
@@ -141,8 +149,7 @@ def render_glyph_art_image(
         background_color=config.background_color,
         cell_padding_ratio=config.frame_cell_padding_ratio,
     )
-    grayscale_grid = image_to_grayscale_grid(frame_img)
-    binary_grid = grayscale_grid_to_binary_grid(grayscale_grid)
+    binary_grid = _frame_image_to_binary_grid(frame_img)
     text_grid = binary_grid_to_text_grid(binary_grid, inner_text, outer_text)
     color_grid = _build_color_grid(binary_grid, config)
 
@@ -163,21 +170,23 @@ def _fit_image_on_canvas(
     output_font_size: int,
     margin_ratio: float = DEFAULT_CANVAS_MARGIN_RATIO,
 ) -> Image.Image:
+    margin_x = round(canvas_size[0] * margin_ratio)
+    margin_y = round(canvas_size[1] * margin_ratio)
+    fit_size = (
+        max(1, canvas_size[0] - margin_x * 2),
+        max(1, canvas_size[1] - margin_y * 2),
+    )
+    scale = min(fit_size[0] / img.width, fit_size[1] / img.height, 1)
+    fitted_output_font_size = max(1, round(output_font_size * scale))
     canvas = _render_outer_text_canvas(
         canvas_size,
         background_color,
         outer_text,
         outer_color,
-        output_font_size,
+        fitted_output_font_size,
     )
     fitted_img = img.copy()
-    margin_x = round(canvas.width * margin_ratio)
-    margin_y = round(canvas.height * margin_ratio)
-    fit_size = (
-        max(1, canvas.width - margin_x * 2),
-        max(1, canvas.height - margin_y * 2),
-    )
-    fitted_img.thumbnail(fit_size, Image.Resampling.LANCZOS)
+    fitted_img.thumbnail(fit_size, Image.Resampling.NEAREST)
     x = (canvas.width - fitted_img.width) // 2
     y = (canvas.height - fitted_img.height) // 2
     canvas.paste(fitted_img, (x, y), fitted_img)

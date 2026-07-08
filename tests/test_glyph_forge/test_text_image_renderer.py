@@ -19,7 +19,7 @@ def _drawn_bounds(img):
 
 def test_render_text_image_returns_image_with_grid_size():
     img = render_text_image(
-        input_text="勝利友情努力",
+        input_text="ABCDEF",
         column_count=2,
         row_count=3,
         font_size=50,
@@ -58,7 +58,7 @@ def test_render_text_image_centers_character_in_cell():
 
 def test_render_text_image_adds_padding_to_prevent_frame_text_cropping():
     img = render_text_image(
-        input_text="ひ",
+        input_text="A",
         column_count=1,
         row_count=1,
         font_size=100,

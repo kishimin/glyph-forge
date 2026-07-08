@@ -26,9 +26,7 @@ def load_font(font_size: int) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(str(font_path), size=font_size)
 
 
-def _centered_text_position(
-    row_index: int,
-    column_index: int,
+def _centered_text_offset(
     text: str,
     cell_size: int,
     font: ImageFont.FreeTypeFont,
@@ -36,8 +34,8 @@ def _centered_text_position(
     left, top, right, bottom = font.getbbox(text)
     text_width = right - left
     text_height = bottom - top
-    x = column_index * cell_size + (cell_size - text_width) / 2 - left
-    y = row_index * cell_size + (cell_size - text_height) / 2 - top
+    x = (cell_size - text_width) / 2 - left
+    y = (cell_size - text_height) / 2 - top
     return x, y
 
 
@@ -60,6 +58,39 @@ def _resolve_cell_size(
     return max(font_size, max_text_width + padding * 2, max_text_height + padding * 2)
 
 
+def _draw_solid_text_cell(
+    img: Image.Image,
+    row_index: int,
+    column_index: int,
+    mask: Image.Image,
+    cell_size: int,
+    fill: Color,
+) -> None:
+    cell_left = column_index * cell_size
+    cell_top = row_index * cell_size
+    img.paste(
+        fill,
+        (cell_left, cell_top, cell_left + cell_size, cell_top + cell_size),
+        mask,
+    )
+
+
+def _solid_text_mask(
+    text: str,
+    cell_size: int,
+    font: ImageFont.FreeTypeFont,
+) -> Image.Image:
+    mask = Image.new("L", (cell_size, cell_size), 0)
+    mask_draw = ImageDraw.Draw(mask)
+    mask_draw.text(
+        _centered_text_offset(text, cell_size, font),
+        text,
+        fill=255,
+        font=font,
+    )
+    return mask.point(lambda alpha: 255 if alpha else 0)
+
+
 def render_text_grid_image(
     text_grid: list[list[str]],
     font_size: int,
@@ -77,16 +108,21 @@ def render_text_grid_image(
         (cell_size * column_count, cell_size * row_count),
         background_color,
     )
-    draw = ImageDraw.Draw(img)
+    mask_cache: dict[str, Image.Image] = {}
 
     for row_index, row in enumerate(text_grid):
         for column_index, text in enumerate(row):
             color = color_grid[row_index][column_index] if color_grid else fill
-            draw.text(
-                _centered_text_position(row_index, column_index, text, cell_size, font),
-                text,
-                fill=color,
-                font=font,
+            if text not in mask_cache:
+                mask_cache[text] = _solid_text_mask(text, cell_size, font)
+            mask = mask_cache[text]
+            _draw_solid_text_cell(
+                img,
+                row_index,
+                column_index,
+                mask,
+                cell_size,
+                color,
             )
 
     return img
