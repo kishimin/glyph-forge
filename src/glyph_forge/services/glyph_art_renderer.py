@@ -8,7 +8,6 @@ from glyph_forge.services.settings import (
     DEFAULT_CANVAS_GRID_DIVISIONS,
     DEFAULT_X_ICON_SIZE,
     MIN_READABLE_OUTPUT_FONT_SIZE,
-    TRANSPARENT_BACKGROUND_COLOR,
     UNCROPPED_FRAME_CELL_PADDING_RATIO,
     GlyphForgeConfig,
 )
@@ -173,7 +172,7 @@ def render_glyph_art_image(
         text_grid,
         config.output_font_size,
         color_grid=color_grid,
-        background_color=TRANSPARENT_BACKGROUND_COLOR,
+        background_color=config.background_color,
     )
 
 
@@ -248,7 +247,7 @@ def render_x_icon_image(
     return _fit_image_on_canvas(
         art,
         DEFAULT_X_ICON_SIZE,
-        TRANSPARENT_BACKGROUND_COLOR,
+        config.background_color,
         outer_text,
         config.outer_color,
         config.output_font_size,
@@ -275,7 +274,7 @@ def render_background_image(
     return _fit_image_on_canvas(
         art,
         DEFAULT_BACKGROUND_SIZE,
-        TRANSPARENT_BACKGROUND_COLOR,
+        config.background_color,
         outer_text,
         config.outer_color,
         config.output_font_size,

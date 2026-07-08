@@ -37,7 +37,7 @@ def test_render_glyph_art_image_returns_non_blank_result():
     assert len(colors) > 1
 
 
-def test_render_glyph_art_image_does_not_paint_frame_background():
+def test_render_glyph_art_image_uses_configured_background_color():
     img = render_glyph_art_image(
         "FRAME_TEXT_SAMPLE",
         "INNER_TEXT_SAMPLE",
@@ -45,7 +45,7 @@ def test_render_glyph_art_image_does_not_paint_frame_background():
         config=_sample_config(),
     )
 
-    assert img.getpixel((0, 0))[3] == 0
+    assert img.getpixel((0, 0)) == (255, 255, 255, 255)
 
 
 def test_render_glyph_art_image_can_color_inner_and_outer_text_separately():
@@ -109,12 +109,12 @@ def test_render_x_icon_image_uses_icon_canvas_without_edge_cropping():
     assert _outer_side_color_ratio(img) > 0.01
 
 
-def test_render_x_icon_image_does_not_paint_background_color():
+def test_render_x_icon_image_uses_configured_background_color():
     img = render_x_icon_image(
         "FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config()
     )
 
-    assert img.getpixel((0, 0))[3] == 0
+    assert img.getpixel((0, 0)) == (255, 255, 255, 255)
 
 
 def test_render_x_icon_image_keeps_frame_text_readable():
@@ -138,12 +138,12 @@ def test_render_background_image_uses_background_canvas_without_edge_cropping():
     assert _outer_side_color_ratio(img) > 0.01
 
 
-def test_render_background_image_does_not_paint_background_color():
+def test_render_background_image_uses_configured_background_color():
     img = render_background_image(
         "FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config()
     )
 
-    assert img.getpixel((0, 0))[3] == 0
+    assert img.getpixel((0, 0)) == (255, 255, 255, 255)
 
 
 def test_render_glyph_art_image_wraps_frame_text_at_five_characters():
@@ -183,23 +183,23 @@ def test_render_x_icon_image_fills_margin_with_outer_text():
     assert _outer_side_color_ratio(_top_band(img)) > 0.01
 
 
-def test_render_x_icon_image_fills_white_space_with_outer_side():
+def test_render_x_icon_image_keeps_outer_text_visible_on_background():
     img = render_x_icon_image(
         "FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config()
     )
 
-    assert _has_no_white_pixels(img)
+    assert _outer_side_color_ratio(img) > 0.01
 
 
-def test_render_background_image_fills_white_space_with_outer_side():
+def test_render_background_image_keeps_outer_text_visible_on_background():
     img = render_background_image(
         "FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config()
     )
 
-    assert _has_no_white_pixels(img)
+    assert _outer_side_color_ratio(img) > 0.01
 
 
-def test_render_glyph_art_image_fills_white_space_with_outer_side():
+def test_render_glyph_art_image_keeps_outer_text_visible_on_background():
     img = render_glyph_art_image(
         "FRAME_TEXT_SAMPLE",
         "INNER_TEXT_SAMPLE",
@@ -207,7 +207,7 @@ def test_render_glyph_art_image_fills_white_space_with_outer_side():
         config=_sample_config(),
     )
 
-    assert _has_no_white_pixels(img)
+    assert _outer_side_color_ratio(img) > 0.01
 
 
 def test_fit_image_on_canvas_scales_margin_outer_text_with_fitted_art(monkeypatch):
@@ -292,12 +292,6 @@ def _min_inner_margin(img) -> int:
     return min(left, img.width - right - 1, top, img.height - bottom - 1)
 
 
-def _has_no_white_pixels(img) -> bool:
-    colors = img.convert("RGB").getcolors(maxcolors=img.width * img.height)
-    assert colors is not None
-    return all(color != (255, 255, 255) for _, color in colors)
-
-
 def _inner_bounds_are_inside_center_region(img) -> bool:
     left, right, top, bottom = _inner_bounds(img)
     center_left = img.width // DEFAULT_CANVAS_GRID_DIVISIONS
@@ -356,7 +350,7 @@ def _top_band(img):
 
 def _is_inner_side_color(color) -> bool:
     red, green, blue = color
-    return red > 220 and green > 100 and blue > 100
+    return red > 220 and green > 100 and 100 < blue < 230
 
 
 def _has_inner_and_outer_channels(color) -> bool:
