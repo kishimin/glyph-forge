@@ -1,12 +1,28 @@
-from glyph_forge.services.convert_text_to_image import text_2_img
-from glyph_forge.services.convert_image_to_01_list import (gray_list_2_wb_list, img_2_gray_list)
-from glyph_forge.services.fill_wb_list_with_text import wb_list_2_wb_text_list
-from test_glyph_forge.output import print_2D_num_list
+from itertools import islice
 
-def test_can_fill_wb_list_with_text():
-    img = text_2_img("般若波羅蜜多", 6, 1, 20)
-    gray_list = img_2_gray_list(img)
-    wb_list = gray_list_2_wb_list(gray_list)
+from glyph_forge.services.fill_wb_list_with_text import (
+    infinity_gen_text,
+    wb_list_2_wb_text_list,
+)
 
-    wb_text_list = wb_list_2_wb_text_list(wb_list, "般若波羅蜜多", "　")
-    print_2D_num_list(wb_text_list)
+
+def test_infinity_gen_text_cycles_input_text():
+    chars = list(islice(infinity_gen_text("ab"), 5))
+
+    assert chars == ["a", "b", "a", "b", "a"]
+
+
+def test_wb_list_2_wb_text_list_fills_black_with_inner_and_white_with_outer():
+    wb_text_list = wb_list_2_wb_text_list(
+        [
+            [0, 1, 0],
+            [1, 0, 1],
+        ],
+        inner_text="ab",
+        outer_text="xy",
+    )
+
+    assert wb_text_list == [
+        ["a", "x", "b"],
+        ["y", "a", "x"],
+    ]

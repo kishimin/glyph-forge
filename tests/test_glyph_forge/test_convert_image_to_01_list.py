@@ -1,10 +1,28 @@
-from glyph_forge.services.convert_text_to_image import text_2_img
-from glyph_forge.services.convert_image_to_01_list import (gray_list_2_wb_list, img_2_gray_list)
-from test_glyph_forge.output import print_2D_num_list
+from PIL import Image
 
-def test_can_print_the_given_list_of_2D_numbers():
-    img = text_2_img("般若波羅蜜多", 6, 1, 20)
-    gray_list = img_2_gray_list(img)
-    wb_list = gray_list_2_wb_list(gray_list)
+from glyph_forge.services.convert_image_to_01_list import (
+    gray_list_2_wb_list,
+    img_2_gray_list,
+)
 
-    print_2D_num_list(wb_list)
+
+def test_img_2_gray_list_converts_rgb_pixels_to_grayscale_values():
+    img = Image.new("RGB", (2, 1))
+    img.putpixel((0, 0), (0, 0, 0))
+    img.putpixel((1, 0), (255, 255, 255))
+
+    assert img_2_gray_list(img) == [[0, 255]]
+
+
+def test_gray_list_2_wb_list_uses_average_value_as_threshold():
+    wb_list = gray_list_2_wb_list(
+        [
+            [0, 100],
+            [200, 255],
+        ]
+    )
+
+    assert wb_list == [
+        [0, 0],
+        [1, 1],
+    ]
