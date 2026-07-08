@@ -78,7 +78,7 @@ def render_glyph_art_image(
         text_grid,
         config.output_font_size,
         color_grid=color_grid,
-        background_color=config.background_color,
+        background_color=config.outer_color,
     )
 
 
@@ -115,7 +115,7 @@ def render_x_icon_image(
         outer_text,
         config=_with_uncropped_frame(config),
     )
-    return _fit_image_on_canvas(art, DEFAULT_X_ICON_SIZE, config.background_color)
+    return _fit_image_on_canvas(art, DEFAULT_X_ICON_SIZE, config.outer_color)
 
 
 def render_background_image(
@@ -130,4 +130,4 @@ def render_background_image(
         outer_text,
         config=_with_uncropped_frame(config),
     )
-    return _fit_image_on_canvas(art, DEFAULT_BACKGROUND_SIZE, config.background_color)
+    return _fit_image_on_canvas(art, DEFAULT_BACKGROUND_SIZE, config.outer_color)

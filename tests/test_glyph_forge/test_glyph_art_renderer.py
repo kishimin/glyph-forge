@@ -71,16 +71,35 @@ def test_render_background_image_uses_background_canvas_without_edge_cropping():
     assert _min_drawn_margin(img) > 0
 
 
+def test_render_x_icon_image_fills_white_space_with_outer_side():
+    img = render_x_icon_image("FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config())
+
+    assert _has_no_white_pixels(img)
+
+
+def test_render_background_image_fills_white_space_with_outer_side():
+    img = render_background_image("FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config())
+
+    assert _has_no_white_pixels(img)
+
+
 def _min_drawn_margin(img) -> int:
     rgb_img = img.convert("RGB")
+    background_color = rgb_img.getpixel((0, 0))
     drawn_pixels = [
         (x, y)
         for y in range(img.height)
         for x in range(img.width)
-        if rgb_img.getpixel((x, y)) != (255, 255, 255)
+        if rgb_img.getpixel((x, y)) != background_color
     ]
     left = min(x for x, _ in drawn_pixels)
     right = max(x for x, _ in drawn_pixels)
     top = min(y for _, y in drawn_pixels)
     bottom = max(y for _, y in drawn_pixels)
     return min(left, img.width - right - 1, top, img.height - bottom - 1)
+
+
+def _has_no_white_pixels(img) -> bool:
+    colors = img.convert("RGB").getcolors(maxcolors=img.width * img.height)
+    assert colors is not None
+    return all(color != (255, 255, 255) for _, color in colors)
