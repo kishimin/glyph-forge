@@ -21,6 +21,9 @@ Primary commits reviewed:
 - `590fa18` feat: add health check endpoint
 - `fa8fd3e` fix: validate image API requests
 - `1d5f4ad` docs: record code review response
+- `f611be6` fix: fill render backgrounds with outer side
+- `d4fe308` test: cover white-free glyph art output
+- `7a9f87e` docs: record outer fill review response
 
 ## Work Completed
 
@@ -145,6 +148,51 @@ Main files:
 - `review/code-review-2026-07-08.md`
 - `review/responses/code-review-2026-07-08-response.md`
 
+### Filled Render Backgrounds with the Outer Side
+
+Addressed the user request to remove white areas and fill them with the
+`outer_text` side instead. The base glyph art renderer now uses
+`outer_color` as the final image background, and the x-icon and background
+renderers also use `outer_color` for their fitted canvases. This removes the
+unwanted white pixels that previously remained around rendered art or in
+resized output padding.
+
+Main files:
+
+- `src/glyph_forge/services/glyph_art_renderer.py`
+- `tests/test_glyph_forge/test_glyph_art_renderer.py`
+
+### Covered White-Free Glyph Art Output
+
+Added service-layer regression tests that assert no white pixels remain in the
+normal glyph art output, x-icon output, and background output when the outer
+side is configured with a non-white color. The existing crop-margin helper was
+also adjusted to compare against the actual corner background color instead of
+assuming white.
+
+The output images were regenerated after the rendering change, and the
+regenerated glyph art, x-icon, and background images were checked for the
+absence of unintended white pixels.
+
+Main files:
+
+- `tests/test_glyph_forge/test_glyph_art_renderer.py`
+
+### Recorded Outer Fill Review Response
+
+Captured the CodeReviewAgent and ReviewResponseAgent results for the outer-fill
+change. The code review found no blocking issues, noted that using
+`outer_color` for the final canvas matched the requested behavior, and recorded
+the residual risk that explicitly choosing white as `outer_color` will still
+produce white by design. The review response documented that `d4fe308` added
+coverage for the normal `render_glyph_art_image` path in addition to x-icon and
+background outputs.
+
+Main files:
+
+- `review/code-review-f611be6.md`
+- `review/responses/code-review-f611be6-response.md`
+
 ## Verification Noted in the Repository
 
 The recorded review response lists these checks:
@@ -152,6 +200,10 @@ The recorded review response lists these checks:
 - `autoflake --check --recursive .`
 - `isort --check-only .`
 - `black --check .`
+- `pytest -q`
+
+The later outer-fill review response also records:
+
 - `pytest -q`
 
 ## Current Working Tree Note
