@@ -1,24 +1,32 @@
-from pydantic import BaseModel
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from glyph_forge.services.settings import (
     DEFAULT_FRAME_FONT_SIZE,
     DEFAULT_MAX_CHARS_PER_LINE,
     DEFAULT_OUTPUT_FONT_SIZE,
     DEFAULT_TEXT_COLOR,
-    Color,
     GlyphForgeConfig,
 )
 
+PositiveInt = Annotated[int, Field(gt=0)]
+NonEmptyString = Annotated[str, Field(min_length=1)]
+RgbValue = Annotated[int, Field(ge=0, le=255)]
+RgbColor = tuple[RgbValue, RgbValue, RgbValue]
+
 
 class GenerateImageRequest(BaseModel):
-    frame_text: str
-    inner_text: str
-    outer_text: str
-    max_chars_per_line: int = DEFAULT_MAX_CHARS_PER_LINE
-    frame_font_size: int = DEFAULT_FRAME_FONT_SIZE
-    output_font_size: int = DEFAULT_OUTPUT_FONT_SIZE
-    inner_color: Color = DEFAULT_TEXT_COLOR
-    outer_color: Color = DEFAULT_TEXT_COLOR
+    model_config = ConfigDict(extra="forbid")
+
+    frame_text: NonEmptyString
+    inner_text: NonEmptyString
+    outer_text: NonEmptyString
+    max_chars_per_line: PositiveInt = DEFAULT_MAX_CHARS_PER_LINE
+    frame_font_size: PositiveInt = DEFAULT_FRAME_FONT_SIZE
+    output_font_size: PositiveInt = DEFAULT_OUTPUT_FONT_SIZE
+    inner_color: RgbColor = DEFAULT_TEXT_COLOR
+    outer_color: RgbColor = DEFAULT_TEXT_COLOR
 
     def to_config(self) -> GlyphForgeConfig:
         return GlyphForgeConfig(
