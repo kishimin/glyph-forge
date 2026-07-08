@@ -5,9 +5,10 @@ from PIL import Image
 from glyph_forge.services.glyph_text_grid import binary_grid_to_text_grid
 from glyph_forge.services.settings import (
     DEFAULT_BACKGROUND_SIZE,
-    DEFAULT_CANVAS_MARGIN_RATIO,
+    DEFAULT_CANVAS_GRID_DIVISIONS,
     DEFAULT_X_ICON_SIZE,
     MIN_READABLE_OUTPUT_FONT_SIZE,
+    TRANSPARENT_BACKGROUND_COLOR,
     UNCROPPED_FRAME_CELL_PADDING_RATIO,
     GlyphForgeConfig,
 )
@@ -60,8 +61,8 @@ def _visible_frame_font_size(
     frame_cell_padding_ratio: float,
 ) -> int:
     row_count = ceil(len(frame_text) / max_chars_per_line)
-    fit_width = canvas_size[0] * (1 - DEFAULT_CANVAS_MARGIN_RATIO * 2)
-    fit_height = canvas_size[1] * (1 - DEFAULT_CANVAS_MARGIN_RATIO * 2)
+    fit_width = canvas_size[0]
+    fit_height = canvas_size[1]
     padded_cell_ratio = 1 + frame_cell_padding_ratio * 2
     max_size_by_width = fit_width / (
         max_chars_per_line * MIN_READABLE_OUTPUT_FONT_SIZE * padded_cell_ratio
@@ -86,6 +87,13 @@ def _outer_background_color(outer_color: tuple[int, int, int]) -> tuple[int, int
         round(red + (255 - red) * 0.35),
         round(green + (255 - green) * 0.35),
         round(blue + (255 - blue) * 0.35),
+    )
+
+
+def _center_region_size(canvas_size: tuple[int, int]) -> tuple[int, int]:
+    return (
+        max(1, canvas_size[0] // DEFAULT_CANVAS_GRID_DIVISIONS),
+        max(1, canvas_size[1] // DEFAULT_CANVAS_GRID_DIVISIONS),
     )
 
 
@@ -157,7 +165,7 @@ def render_glyph_art_image(
         text_grid,
         config.output_font_size,
         color_grid=color_grid,
-        background_color=_outer_background_color(config.outer_color),
+        background_color=TRANSPARENT_BACKGROUND_COLOR,
     )
 
 
@@ -168,14 +176,8 @@ def _fit_image_on_canvas(
     outer_text: str,
     outer_color: tuple[int, int, int],
     output_font_size: int,
-    margin_ratio: float = DEFAULT_CANVAS_MARGIN_RATIO,
 ) -> Image.Image:
-    margin_x = round(canvas_size[0] * margin_ratio)
-    margin_y = round(canvas_size[1] * margin_ratio)
-    fit_size = (
-        max(1, canvas_size[0] - margin_x * 2),
-        max(1, canvas_size[1] - margin_y * 2),
-    )
+    fit_size = _center_region_size(canvas_size)
     scale = min(fit_size[0] / img.width, fit_size[1] / img.height, 1)
     fitted_output_font_size = max(1, round(output_font_size * scale))
     canvas = _render_outer_text_canvas(
@@ -228,7 +230,11 @@ def render_x_icon_image(
         frame_text,
         inner_text,
         outer_text,
-        config=_with_visible_layout(frame_text, DEFAULT_X_ICON_SIZE, config),
+        config=_with_visible_layout(
+            frame_text,
+            _center_region_size(DEFAULT_X_ICON_SIZE),
+            config,
+        ),
     )
     return _fit_image_on_canvas(
         art,
@@ -250,7 +256,11 @@ def render_background_image(
         frame_text,
         inner_text,
         outer_text,
-        config=_with_visible_layout(frame_text, DEFAULT_BACKGROUND_SIZE, config),
+        config=_with_visible_layout(
+            frame_text,
+            _center_region_size(DEFAULT_BACKGROUND_SIZE),
+            config,
+        ),
     )
     return _fit_image_on_canvas(
         art,

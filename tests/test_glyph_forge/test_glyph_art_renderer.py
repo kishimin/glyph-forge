@@ -7,6 +7,7 @@ from glyph_forge.services.glyph_art_renderer import (
 )
 from glyph_forge.services.settings import (
     DEFAULT_BACKGROUND_SIZE,
+    DEFAULT_CANVAS_GRID_DIVISIONS,
     DEFAULT_X_ICON_SIZE,
     GlyphForgeConfig,
 )
@@ -34,6 +35,17 @@ def test_render_glyph_art_image_returns_non_blank_result():
 
     assert colors is not None
     assert len(colors) > 1
+
+
+def test_render_glyph_art_image_does_not_paint_frame_background():
+    img = render_glyph_art_image(
+        "FRAME_TEXT_SAMPLE",
+        "INNER_TEXT_SAMPLE",
+        "OUTER_TEXT_SAMPLE",
+        config=_sample_config(),
+    )
+
+    assert img.getpixel((0, 0))[3] == 0
 
 
 def test_render_glyph_art_image_can_color_inner_and_outer_text_separately():
@@ -92,8 +104,8 @@ def test_render_x_icon_image_uses_icon_canvas_without_edge_cropping():
 
     assert img.size == DEFAULT_X_ICON_SIZE
     assert _min_inner_margin(img) > 0
-    assert _inner_height_ratio(img) > 0.18
-    assert _inner_side_color_ratio(img) > 0.01
+    assert _inner_bounds_are_inside_center_region(img)
+    assert _inner_side_color_ratio(img) > 0.001
     assert _outer_side_color_ratio(img) > 0.01
 
 
@@ -104,8 +116,8 @@ def test_render_background_image_uses_background_canvas_without_edge_cropping():
 
     assert img.size == DEFAULT_BACKGROUND_SIZE
     assert _min_inner_margin(img) > 0
-    assert _inner_height_ratio(img) > 0.35
-    assert _inner_side_color_ratio(img) > 0.01
+    assert _inner_bounds_are_inside_center_region(img)
+    assert _inner_side_color_ratio(img) > 0.001
     assert _outer_side_color_ratio(img) > 0.01
 
 
@@ -212,7 +224,10 @@ def test_fit_image_on_canvas_scales_margin_outer_text_with_fitted_art(monkeypatc
         40,
     )
 
-    fit_size = (100, 100)
+    fit_size = (
+        120 // DEFAULT_CANVAS_GRID_DIVISIONS,
+        120 // DEFAULT_CANVAS_GRID_DIVISIONS,
+    )
     expected_font_size = max(
         1,
         round(
@@ -258,15 +273,34 @@ def _has_no_white_pixels(img) -> bool:
     return all(color != (255, 255, 255) for _, color in colors)
 
 
-def _inner_height_ratio(img) -> float:
+def _inner_bounds_are_inside_center_region(img) -> bool:
+    left, right, top, bottom = _inner_bounds(img)
+    center_left = img.width // DEFAULT_CANVAS_GRID_DIVISIONS
+    center_right = img.width - center_left
+    center_top = img.height // DEFAULT_CANVAS_GRID_DIVISIONS
+    center_bottom = img.height - center_top
+    return (
+        center_left <= left
+        and right < center_right
+        and center_top <= top
+        and bottom < center_bottom
+    )
+
+
+def _inner_bounds(img):
     rgb_img = img.convert("RGB")
-    y_values = [
-        y
+    drawn_pixels = [
+        (x, y)
         for y in range(img.height)
         for x in range(img.width)
         if _is_inner_side_color(rgb_img.getpixel((x, y)))
     ]
-    return (max(y_values) - min(y_values) + 1) / img.height
+    return (
+        min(x for x, _ in drawn_pixels),
+        max(x for x, _ in drawn_pixels),
+        min(y for _, y in drawn_pixels),
+        max(y for _, y in drawn_pixels),
+    )
 
 
 def _inner_side_color_ratio(img) -> float:
