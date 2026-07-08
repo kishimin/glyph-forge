@@ -8,6 +8,11 @@ from glyph_forge.services.convert_to_image import text_2_text_img
 app = FastAPI()
 
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 @app.post("/images")
 def generate_image(generateImageRequest: GenerateImageRequest):
     if not generateImageRequest.inner_text:
