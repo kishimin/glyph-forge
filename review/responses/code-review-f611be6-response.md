@@ -2,16 +2,13 @@
 
 ## Findings
 
-指摘事項なしとして確認しました。
+Confirmed that there were no findings.
 
 ## Residual Risk: API test does not inspect pixels
 
 Addressed in `d4fe308`.
 
-API テストは引き続き PNG 応答の確認までですが、通常の
-`render_glyph_art_image` 出力についても白ピクセルが残らないことを確認する
-サービス層テストを追加しました。これにより、x-icon/background 以外の通常描画でも
-主要な白背景回帰を検出できます。
+The API tests still verify PNG responses only, but a service-layer test was added to confirm that regular `render_glyph_art_image` output also leaves no white pixels. This catches the main white-background regression for normal rendering, not only x-icon/background rendering.
 
 ## Verification
 
