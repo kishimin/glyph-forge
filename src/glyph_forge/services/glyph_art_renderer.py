@@ -74,22 +74,6 @@ def _visible_frame_font_size(
     return max(1, min(configured_frame_font_size, visible_font_size))
 
 
-def _outer_background_color(outer_color: tuple[int, int, int]) -> tuple[int, int, int]:
-    red, green, blue = outer_color
-    luminance = red * 0.299 + green * 0.587 + blue * 0.114
-    if luminance > 127:
-        return (
-            round(red * 0.35),
-            round(green * 0.35),
-            round(blue * 0.35),
-        )
-    return (
-        round(red + (255 - red) * 0.35),
-        round(green + (255 - green) * 0.35),
-        round(blue + (255 - blue) * 0.35),
-    )
-
-
 def _center_region_size(canvas_size: tuple[int, int]) -> tuple[int, int]:
     return (
         max(1, canvas_size[0] // DEFAULT_CANVAS_GRID_DIVISIONS),
@@ -135,12 +119,30 @@ def _frame_image_to_binary_grid(frame_img: Image.Image) -> list[list[int]]:
     ]
 
 
+def _fit_frame_image_to_output_grid(
+    frame_img: Image.Image,
+    max_output_size: tuple[int, int],
+    output_font_size: int,
+) -> Image.Image:
+    max_grid_size = (
+        max(1, max_output_size[0] // output_font_size),
+        max(1, max_output_size[1] // output_font_size),
+    )
+    if frame_img.width <= max_grid_size[0] and frame_img.height <= max_grid_size[1]:
+        return frame_img
+
+    fitted_img = frame_img.copy()
+    fitted_img.thumbnail(max_grid_size, Image.Resampling.NEAREST)
+    return fitted_img
+
+
 def render_glyph_art_image(
     frame_text: str,
     inner_text: str,
     outer_text: str,
     *,
     config: GlyphForgeConfig | None = None,
+    max_output_size: tuple[int, int] | None = None,
 ) -> Image.Image:
     if config is None:
         config = GlyphForgeConfig()
@@ -157,6 +159,12 @@ def render_glyph_art_image(
         background_color=config.background_color,
         cell_padding_ratio=config.frame_cell_padding_ratio,
     )
+    if max_output_size is not None:
+        frame_img = _fit_frame_image_to_output_grid(
+            frame_img,
+            max_output_size,
+            config.output_font_size,
+        )
     binary_grid = _frame_image_to_binary_grid(frame_img)
     text_grid = binary_grid_to_text_grid(binary_grid, inner_text, outer_text)
     color_grid = _build_color_grid(binary_grid, config)
@@ -172,7 +180,7 @@ def render_glyph_art_image(
 def _fit_image_on_canvas(
     img: Image.Image,
     canvas_size: tuple[int, int],
-    background_color: tuple[int, int, int],
+    background_color: tuple[int, int, int] | tuple[int, int, int, int],
     outer_text: str,
     outer_color: tuple[int, int, int],
     output_font_size: int,
@@ -197,7 +205,7 @@ def _fit_image_on_canvas(
 
 def _render_outer_text_canvas(
     canvas_size: tuple[int, int],
-    background_color: tuple[int, int, int],
+    background_color: tuple[int, int, int] | tuple[int, int, int, int],
     outer_text: str,
     outer_color: tuple[int, int, int],
     output_font_size: int,
@@ -235,11 +243,12 @@ def render_x_icon_image(
             _center_region_size(DEFAULT_X_ICON_SIZE),
             config,
         ),
+        max_output_size=_center_region_size(DEFAULT_X_ICON_SIZE),
     )
     return _fit_image_on_canvas(
         art,
         DEFAULT_X_ICON_SIZE,
-        _outer_background_color(config.outer_color),
+        TRANSPARENT_BACKGROUND_COLOR,
         outer_text,
         config.outer_color,
         config.output_font_size,
@@ -261,11 +270,12 @@ def render_background_image(
             _center_region_size(DEFAULT_BACKGROUND_SIZE),
             config,
         ),
+        max_output_size=_center_region_size(DEFAULT_BACKGROUND_SIZE),
     )
     return _fit_image_on_canvas(
         art,
         DEFAULT_BACKGROUND_SIZE,
-        _outer_background_color(config.outer_color),
+        TRANSPARENT_BACKGROUND_COLOR,
         outer_text,
         config.outer_color,
         config.output_font_size,

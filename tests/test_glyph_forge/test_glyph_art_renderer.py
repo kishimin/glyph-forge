@@ -109,6 +109,23 @@ def test_render_x_icon_image_uses_icon_canvas_without_edge_cropping():
     assert _outer_side_color_ratio(img) > 0.01
 
 
+def test_render_x_icon_image_does_not_paint_background_color():
+    img = render_x_icon_image(
+        "FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config()
+    )
+
+    assert img.getpixel((0, 0))[3] == 0
+
+
+def test_render_x_icon_image_keeps_frame_text_readable():
+    img = render_x_icon_image("ABCD", "x", "o", _sample_config())
+
+    left, right, top, bottom = _inner_bounds(img)
+
+    assert right - left + 1 > 40
+    assert bottom - top + 1 > 20
+
+
 def test_render_background_image_uses_background_canvas_without_edge_cropping():
     img = render_background_image(
         "FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config()
@@ -119,6 +136,14 @@ def test_render_background_image_uses_background_canvas_without_edge_cropping():
     assert _inner_bounds_are_inside_center_region(img)
     assert _inner_side_color_ratio(img) > 0.001
     assert _outer_side_color_ratio(img) > 0.01
+
+
+def test_render_background_image_does_not_paint_background_color():
+    img = render_background_image(
+        "FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config()
+    )
+
+    assert img.getpixel((0, 0))[3] == 0
 
 
 def test_render_glyph_art_image_wraps_frame_text_at_five_characters():
