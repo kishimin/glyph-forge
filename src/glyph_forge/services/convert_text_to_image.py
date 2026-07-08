@@ -1,7 +1,12 @@
 from PIL import Image, ImageDraw, ImageFont
 from importlib.resources import files
 
-from glyph_forge.services.settings import DEFAULT_BACKGROUND_COLOR, DEFAULT_TEXT_COLOR, Color
+from glyph_forge.services.settings import (
+    DEFAULT_BACKGROUND_COLOR,
+    DEFAULT_TEXT_COLOR,
+    IMAGE_MODE_RGBA,
+    Color,
+)
 
 
 def split_text_lines(input_text: str, max_chars_per_line: int) -> list[str]:
@@ -44,7 +49,7 @@ def text_grid_2_img(
     row_count = len(text_grid)
     column_count = max((len(row) for row in text_grid), default=0)
     img = Image.new(
-        "RGBA",
+        IMAGE_MODE_RGBA,
         (text_size * column_count, text_size * row_count),
         background_color,
     )
