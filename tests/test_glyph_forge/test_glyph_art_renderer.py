@@ -83,6 +83,14 @@ def test_render_background_image_fills_white_space_with_outer_side():
     assert _has_no_white_pixels(img)
 
 
+def test_render_glyph_art_image_fills_white_space_with_outer_side():
+    img = render_glyph_art_image(
+        "FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", config=_sample_config()
+    )
+
+    assert _has_no_white_pixels(img)
+
+
 def _min_drawn_margin(img) -> int:
     rgb_img = img.convert("RGB")
     background_color = rgb_img.getpixel((0, 0))
