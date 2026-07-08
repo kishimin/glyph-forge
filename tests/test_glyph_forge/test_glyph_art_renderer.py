@@ -58,53 +58,100 @@ def test_render_glyph_art_image_can_color_inner_and_outer_text_separately():
 
 
 def test_render_x_icon_image_uses_icon_canvas_without_edge_cropping():
-    img = render_x_icon_image("FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config())
+    img = render_x_icon_image(
+        "FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config()
+    )
 
     assert img.size == DEFAULT_X_ICON_SIZE
-    assert _min_drawn_margin(img) > 0
-    assert _drawn_height_ratio(img) > 0.35
+    assert _min_inner_margin(img) > 0
+    assert _inner_height_ratio(img) > 0.18
     assert _inner_side_color_ratio(img) > 0.01
     assert _outer_side_color_ratio(img) > 0.01
 
 
 def test_render_background_image_uses_background_canvas_without_edge_cropping():
-    img = render_background_image("FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config())
+    img = render_background_image(
+        "FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config()
+    )
 
     assert img.size == DEFAULT_BACKGROUND_SIZE
-    assert _min_drawn_margin(img) > 0
-    assert _drawn_height_ratio(img) > 0.35
+    assert _min_inner_margin(img) > 0
+    assert _inner_height_ratio(img) > 0.35
     assert _inner_side_color_ratio(img) > 0.01
     assert _outer_side_color_ratio(img) > 0.01
 
 
+def test_render_glyph_art_image_wraps_frame_text_at_five_characters():
+    five_chars = render_glyph_art_image(
+        "ABCDE",
+        "x",
+        "o",
+        config=GlyphForgeConfig(
+            max_chars_per_line=5,
+            frame_font_size=20,
+            output_font_size=10,
+            inner_color=(255, 183, 197),
+            outer_color=(255, 0, 0),
+        ),
+    )
+    six_chars = render_glyph_art_image(
+        "ABCDEF",
+        "x",
+        "o",
+        config=GlyphForgeConfig(
+            max_chars_per_line=5,
+            frame_font_size=20,
+            output_font_size=10,
+            inner_color=(255, 183, 197),
+            outer_color=(255, 0, 0),
+        ),
+    )
+
+    assert six_chars.height > five_chars.height
+
+
+def test_render_x_icon_image_fills_margin_with_outer_text():
+    img = render_x_icon_image(
+        "FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config()
+    )
+
+    assert _outer_side_color_ratio(_top_band(img)) > 0.01
+
+
 def test_render_x_icon_image_fills_white_space_with_outer_side():
-    img = render_x_icon_image("FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config())
+    img = render_x_icon_image(
+        "FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config()
+    )
 
     assert _has_no_white_pixels(img)
 
 
 def test_render_background_image_fills_white_space_with_outer_side():
-    img = render_background_image("FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config())
+    img = render_background_image(
+        "FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config()
+    )
 
     assert _has_no_white_pixels(img)
 
 
 def test_render_glyph_art_image_fills_white_space_with_outer_side():
     img = render_glyph_art_image(
-        "FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", config=_sample_config()
+        "FRAME_TEXT_SAMPLE",
+        "INNER_TEXT_SAMPLE",
+        "OUTER_TEXT_SAMPLE",
+        config=_sample_config(),
     )
 
     assert _has_no_white_pixels(img)
 
 
-def _min_drawn_margin(img) -> int:
+def _min_inner_margin(img) -> int:
     rgb_img = img.convert("RGB")
-    background_color = rgb_img.getpixel((0, 0))
     drawn_pixels = [
         (x, y)
         for y in range(img.height)
         for x in range(img.width)
-        if rgb_img.getpixel((x, y)) != background_color
+        if _is_inner_side_color(rgb_img.getpixel((x, y)))
     ]
     left = min(x for x, _ in drawn_pixels)
     right = max(x for x, _ in drawn_pixels)
@@ -119,14 +166,13 @@ def _has_no_white_pixels(img) -> bool:
     return all(color != (255, 255, 255) for _, color in colors)
 
 
-def _drawn_height_ratio(img) -> float:
+def _inner_height_ratio(img) -> float:
     rgb_img = img.convert("RGB")
-    background_color = rgb_img.getpixel((0, 0))
     y_values = [
         y
         for y in range(img.height)
         for x in range(img.width)
-        if rgb_img.getpixel((x, y)) != background_color
+        if _is_inner_side_color(rgb_img.getpixel((x, y)))
     ]
     return (max(y_values) - min(y_values) + 1) / img.height
 
@@ -137,7 +183,7 @@ def _inner_side_color_ratio(img) -> float:
     inner_pixels = sum(
         count
         for count, (red, green, blue) in colors
-        if red > 220 and green > 100 and blue > 100
+        if _is_inner_side_color((red, green, blue))
     )
     return inner_pixels / (img.width * img.height)
 
@@ -151,3 +197,12 @@ def _outer_side_color_ratio(img) -> float:
         if red > 200 and green < 80 and blue < 80
     )
     return outer_pixels / (img.width * img.height)
+
+
+def _top_band(img):
+    return img.crop((0, 0, img.width, max(1, img.height // 10)))
+
+
+def _is_inner_side_color(color) -> bool:
+    red, green, blue = color
+    return red > 220 and green > 100 and blue > 100

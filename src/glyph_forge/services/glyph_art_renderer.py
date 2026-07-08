@@ -1,4 +1,4 @@
-from math import ceil, floor, sqrt
+from math import ceil, floor
 
 from PIL import Image
 
@@ -51,14 +51,9 @@ def _with_uncropped_frame(config: GlyphForgeConfig) -> GlyphForgeConfig:
 
 
 def _visible_max_chars_per_line(
-    frame_text: str,
-    canvas_size: tuple[int, int],
     configured_max_chars_per_line: int,
 ) -> int:
-    canvas_width, canvas_height = canvas_size
-    canvas_aspect_ratio = canvas_width / canvas_height
-    balanced_column_count = ceil(sqrt(len(frame_text) * canvas_aspect_ratio))
-    return max(1, min(configured_max_chars_per_line, balanced_column_count))
+    return configured_max_chars_per_line
 
 
 def _visible_frame_font_size(
@@ -105,8 +100,6 @@ def _with_visible_layout(
 ) -> GlyphForgeConfig:
     safe_config = _with_uncropped_frame(config)
     visible_max_chars_per_line = _visible_max_chars_per_line(
-        frame_text,
-        canvas_size,
         safe_config.max_chars_per_line,
     )
     return GlyphForgeConfig(
@@ -165,9 +158,18 @@ def _fit_image_on_canvas(
     img: Image.Image,
     canvas_size: tuple[int, int],
     background_color: tuple[int, int, int],
+    outer_text: str,
+    outer_color: tuple[int, int, int],
+    output_font_size: int,
     margin_ratio: float = DEFAULT_CANVAS_MARGIN_RATIO,
 ) -> Image.Image:
-    canvas = Image.new("RGBA", canvas_size, background_color)
+    canvas = _render_outer_text_canvas(
+        canvas_size,
+        background_color,
+        outer_text,
+        outer_color,
+        output_font_size,
+    )
     fitted_img = img.copy()
     margin_x = round(canvas.width * margin_ratio)
     margin_y = round(canvas.height * margin_ratio)
@@ -180,6 +182,31 @@ def _fit_image_on_canvas(
     y = (canvas.height - fitted_img.height) // 2
     canvas.paste(fitted_img, (x, y), fitted_img)
     return canvas
+
+
+def _render_outer_text_canvas(
+    canvas_size: tuple[int, int],
+    background_color: tuple[int, int, int],
+    outer_text: str,
+    outer_color: tuple[int, int, int],
+    output_font_size: int,
+) -> Image.Image:
+    columns = ceil(canvas_size[0] / output_font_size)
+    rows = ceil(canvas_size[1] / output_font_size)
+    outer_chars = (outer_text * (ceil(columns * rows / len(outer_text))))[
+        : columns * rows
+    ]
+    text_grid = [
+        list(outer_chars[index : index + columns])
+        for index in range(0, len(outer_chars), columns)
+    ]
+    background = render_text_grid_image(
+        text_grid,
+        output_font_size,
+        fill=outer_color,
+        background_color=background_color,
+    )
+    return background.crop((0, 0, canvas_size[0], canvas_size[1]))
 
 
 def render_x_icon_image(
@@ -198,6 +225,9 @@ def render_x_icon_image(
         art,
         DEFAULT_X_ICON_SIZE,
         _outer_background_color(config.outer_color),
+        outer_text,
+        config.outer_color,
+        config.output_font_size,
     )
 
 
@@ -217,4 +247,7 @@ def render_background_image(
         art,
         DEFAULT_BACKGROUND_SIZE,
         _outer_background_color(config.outer_color),
+        outer_text,
+        config.outer_color,
+        config.output_font_size,
     )
