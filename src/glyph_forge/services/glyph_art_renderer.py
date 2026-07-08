@@ -1,3 +1,5 @@
+from math import ceil, floor, sqrt
+
 from PIL import Image
 
 from glyph_forge.services.glyph_text_grid import binary_grid_to_text_grid
@@ -9,6 +11,7 @@ from glyph_forge.services.settings import (
     DEFAULT_BACKGROUND_SIZE,
     DEFAULT_CANVAS_MARGIN_RATIO,
     DEFAULT_X_ICON_SIZE,
+    MIN_READABLE_OUTPUT_FONT_SIZE,
     UNCROPPED_FRAME_CELL_PADDING_RATIO,
     GlyphForgeConfig,
 )
@@ -47,6 +50,82 @@ def _with_uncropped_frame(config: GlyphForgeConfig) -> GlyphForgeConfig:
     )
 
 
+def _visible_max_chars_per_line(
+    frame_text: str,
+    canvas_size: tuple[int, int],
+    configured_max_chars_per_line: int,
+) -> int:
+    canvas_width, canvas_height = canvas_size
+    canvas_aspect_ratio = canvas_width / canvas_height
+    balanced_column_count = ceil(sqrt(len(frame_text) * canvas_aspect_ratio))
+    return max(1, min(configured_max_chars_per_line, balanced_column_count))
+
+
+def _visible_frame_font_size(
+    frame_text: str,
+    canvas_size: tuple[int, int],
+    max_chars_per_line: int,
+    configured_frame_font_size: int,
+    frame_cell_padding_ratio: float,
+) -> int:
+    row_count = ceil(len(frame_text) / max_chars_per_line)
+    fit_width = canvas_size[0] * (1 - DEFAULT_CANVAS_MARGIN_RATIO * 2)
+    fit_height = canvas_size[1] * (1 - DEFAULT_CANVAS_MARGIN_RATIO * 2)
+    padded_cell_ratio = 1 + frame_cell_padding_ratio * 2
+    max_size_by_width = fit_width / (
+        max_chars_per_line * MIN_READABLE_OUTPUT_FONT_SIZE * padded_cell_ratio
+    )
+    max_size_by_height = fit_height / (
+        row_count * MIN_READABLE_OUTPUT_FONT_SIZE * padded_cell_ratio
+    )
+    visible_font_size = floor(min(max_size_by_width, max_size_by_height))
+    return max(1, min(configured_frame_font_size, visible_font_size))
+
+
+def _outer_background_color(outer_color: tuple[int, int, int]) -> tuple[int, int, int]:
+    red, green, blue = outer_color
+    luminance = red * 0.299 + green * 0.587 + blue * 0.114
+    if luminance > 127:
+        return (
+            round(red * 0.35),
+            round(green * 0.35),
+            round(blue * 0.35),
+        )
+    return (
+        round(red + (255 - red) * 0.35),
+        round(green + (255 - green) * 0.35),
+        round(blue + (255 - blue) * 0.35),
+    )
+
+
+def _with_visible_layout(
+    frame_text: str,
+    canvas_size: tuple[int, int],
+    config: GlyphForgeConfig,
+) -> GlyphForgeConfig:
+    safe_config = _with_uncropped_frame(config)
+    visible_max_chars_per_line = _visible_max_chars_per_line(
+        frame_text,
+        canvas_size,
+        safe_config.max_chars_per_line,
+    )
+    return GlyphForgeConfig(
+        max_chars_per_line=visible_max_chars_per_line,
+        frame_font_size=_visible_frame_font_size(
+            frame_text,
+            canvas_size,
+            visible_max_chars_per_line,
+            safe_config.frame_font_size,
+            safe_config.frame_cell_padding_ratio,
+        ),
+        output_font_size=safe_config.output_font_size,
+        frame_cell_padding_ratio=safe_config.frame_cell_padding_ratio,
+        inner_color=safe_config.inner_color,
+        outer_color=safe_config.outer_color,
+        background_color=safe_config.background_color,
+    )
+
+
 def render_glyph_art_image(
     frame_text: str,
     inner_text: str,
@@ -78,7 +157,7 @@ def render_glyph_art_image(
         text_grid,
         config.output_font_size,
         color_grid=color_grid,
-        background_color=config.outer_color,
+        background_color=_outer_background_color(config.outer_color),
     )
 
 
@@ -113,9 +192,13 @@ def render_x_icon_image(
         frame_text,
         inner_text,
         outer_text,
-        config=_with_uncropped_frame(config),
+        config=_with_visible_layout(frame_text, DEFAULT_X_ICON_SIZE, config),
     )
-    return _fit_image_on_canvas(art, DEFAULT_X_ICON_SIZE, config.outer_color)
+    return _fit_image_on_canvas(
+        art,
+        DEFAULT_X_ICON_SIZE,
+        _outer_background_color(config.outer_color),
+    )
 
 
 def render_background_image(
@@ -128,6 +211,10 @@ def render_background_image(
         frame_text,
         inner_text,
         outer_text,
-        config=_with_uncropped_frame(config),
+        config=_with_visible_layout(frame_text, DEFAULT_BACKGROUND_SIZE, config),
     )
-    return _fit_image_on_canvas(art, DEFAULT_BACKGROUND_SIZE, config.outer_color)
+    return _fit_image_on_canvas(
+        art,
+        DEFAULT_BACKGROUND_SIZE,
+        _outer_background_color(config.outer_color),
+    )

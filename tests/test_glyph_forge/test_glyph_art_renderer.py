@@ -62,6 +62,9 @@ def test_render_x_icon_image_uses_icon_canvas_without_edge_cropping():
 
     assert img.size == DEFAULT_X_ICON_SIZE
     assert _min_drawn_margin(img) > 0
+    assert _drawn_height_ratio(img) > 0.35
+    assert _inner_side_color_ratio(img) > 0.01
+    assert _outer_side_color_ratio(img) > 0.01
 
 
 def test_render_background_image_uses_background_canvas_without_edge_cropping():
@@ -69,6 +72,9 @@ def test_render_background_image_uses_background_canvas_without_edge_cropping():
 
     assert img.size == DEFAULT_BACKGROUND_SIZE
     assert _min_drawn_margin(img) > 0
+    assert _drawn_height_ratio(img) > 0.35
+    assert _inner_side_color_ratio(img) > 0.01
+    assert _outer_side_color_ratio(img) > 0.01
 
 
 def test_render_x_icon_image_fills_white_space_with_outer_side():
@@ -111,3 +117,37 @@ def _has_no_white_pixels(img) -> bool:
     colors = img.convert("RGB").getcolors(maxcolors=img.width * img.height)
     assert colors is not None
     return all(color != (255, 255, 255) for _, color in colors)
+
+
+def _drawn_height_ratio(img) -> float:
+    rgb_img = img.convert("RGB")
+    background_color = rgb_img.getpixel((0, 0))
+    y_values = [
+        y
+        for y in range(img.height)
+        for x in range(img.width)
+        if rgb_img.getpixel((x, y)) != background_color
+    ]
+    return (max(y_values) - min(y_values) + 1) / img.height
+
+
+def _inner_side_color_ratio(img) -> float:
+    colors = img.convert("RGB").getcolors(maxcolors=img.width * img.height)
+    assert colors is not None
+    inner_pixels = sum(
+        count
+        for count, (red, green, blue) in colors
+        if red > 220 and green > 100 and blue > 100
+    )
+    return inner_pixels / (img.width * img.height)
+
+
+def _outer_side_color_ratio(img) -> float:
+    colors = img.convert("RGB").getcolors(maxcolors=img.width * img.height)
+    assert colors is not None
+    outer_pixels = sum(
+        count
+        for count, (red, green, blue) in colors
+        if red > 200 and green < 80 and blue < 80
+    )
+    return outer_pixels / (img.width * img.height)
