@@ -1,7 +1,6 @@
 from fastapi import FastAPI, responses
 from pydantic import BaseModel
 from glyph_forge.services.convert_to_image import text_2_text_img
-from PIL import Image
 import secrets
 
 class GenerateImageRequest(BaseModel):

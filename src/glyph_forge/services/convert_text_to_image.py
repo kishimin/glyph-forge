@@ -1,5 +1,4 @@
 from PIL import Image, ImageDraw, ImageFont
-from pathlib import Path
 from importlib.resources import files
 
 def text_2_img(input_text: str, horizontal_len: int, vertical_len: int, text_size: int) -> Image.Image:
