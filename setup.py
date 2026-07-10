@@ -9,4 +9,6 @@ setup(
     url="https://github.com/kishimin/glyph-forge",
     package_dir={"": "src"},
     packages=find_packages(where="src"),
+    package_data={"glyph_forge.fonts": ["*.ttf"]},
+    include_package_data=True,
 )
