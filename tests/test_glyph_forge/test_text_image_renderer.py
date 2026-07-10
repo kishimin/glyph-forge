@@ -1,4 +1,6 @@
-from glyph_forge.services.text_image_renderer import render_text_image
+import pytest
+
+from glyph_forge.services.text_image_renderer import render_text_image, split_text_lines
 
 
 def _drawn_bounds(img):
@@ -68,3 +70,13 @@ def test_render_text_image_adds_padding_to_prevent_frame_text_cropping():
     left, right, top, bottom = _drawn_bounds(img)
 
     assert min(left, img.width - right - 1, top, img.height - bottom - 1) > 0
+
+
+def test_split_text_lines_rejects_empty_text():
+    with pytest.raises(ValueError, match="input_text must not be empty"):
+        split_text_lines("", 5)
+
+
+def test_render_text_image_rejects_empty_text():
+    with pytest.raises(ValueError, match="input_text must not be empty"):
+        render_text_image("", column_count=1, row_count=1, font_size=20)

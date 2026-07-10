@@ -316,6 +316,9 @@ def _render_tiled_text_canvas(
     output_font_size: int,
     background_color: tuple[int, int, int] | tuple[int, int, int, int],
 ) -> Image.Image:
+    if not text:
+        raise ValueError("text must not be empty")
+
     columns = ceil(canvas_size[0] / output_font_size)
     rows = ceil(canvas_size[1] / output_font_size)
     chars = (text * (ceil(columns * rows / len(text))))[: columns * rows]
@@ -338,6 +341,9 @@ def _render_outer_text_canvas(
     outer_color: tuple[int, int, int],
     output_font_size: int,
 ) -> Image.Image:
+    if not outer_text:
+        raise ValueError("outer_text must not be empty")
+
     columns = ceil(canvas_size[0] / output_font_size)
     rows = ceil(canvas_size[1] / output_font_size)
     outer_chars = (outer_text * (ceil(columns * rows / len(outer_text))))[

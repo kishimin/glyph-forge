@@ -12,13 +12,15 @@ from glyph_forge.services.settings import (
 
 
 def split_text_lines(input_text: str, max_chars_per_line: int) -> list[str]:
+    if not input_text:
+        raise ValueError("input_text must not be empty")
     if max_chars_per_line < 1:
         raise ValueError("max_chars_per_line must be greater than 0")
 
     return [
         input_text[index : index + max_chars_per_line]
         for index in range(0, len(input_text), max_chars_per_line)
-    ] or [""]
+    ]
 
 
 def load_font(font_size: int) -> ImageFont.FreeTypeFont:
@@ -137,6 +139,8 @@ def render_text_image(
     background_color: Color = DEFAULT_BACKGROUND_COLOR,
     cell_padding_ratio: float = DEFAULT_FRAME_CELL_PADDING_RATIO,
 ) -> Image.Image:
+    if not input_text:
+        raise ValueError("input_text must not be empty")
     text_grid = [
         list(input_text[index : index + column_count])
         for index in range(0, column_count * row_count, column_count)

@@ -1,6 +1,10 @@
+import pytest
+
 from glyph_forge.services.glyph_art_renderer import (
     _fit_image_on_canvas,
     _frame_image_to_binary_grid,
+    _render_outer_text_canvas,
+    _render_tiled_text_canvas,
     render_background_image,
     render_glyph_art_image,
     render_x_icon_image,
@@ -372,6 +376,28 @@ def test_fit_image_on_canvas_keeps_outer_text_font_size_constant(monkeypatch):
     )
 
     assert captured_font_sizes == [40]
+
+
+def test_render_tiled_text_canvas_rejects_empty_text():
+    with pytest.raises(ValueError, match="text must not be empty"):
+        _render_tiled_text_canvas(
+            (100, 100),
+            "",
+            (255, 0, 0),
+            20,
+            (255, 255, 255, 0),
+        )
+
+
+def test_render_outer_text_canvas_rejects_empty_outer_text():
+    with pytest.raises(ValueError, match="outer_text must not be empty"):
+        _render_outer_text_canvas(
+            (100, 100),
+            (255, 255, 255),
+            "",
+            (255, 0, 0),
+            20,
+        )
 
 
 def _fake_frame_image(colors):
