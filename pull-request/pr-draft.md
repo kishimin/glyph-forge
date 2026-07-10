@@ -1,31 +1,17 @@
-# PR Draft: glyph_forge rendering/API/test expansion
+# PR Draft: Improve profile frame rendering
 
 ## Summary
 
-Expanded the rendering options in the glyph_forge services and the FastAPI boundary, and locked the existing service behavior with tests. Centering, color separation, and wrapping settings are centralized in `GlyphForgeConfig`, with a compact `/images` request and a `/health` endpoint added.
-
-The image binarization flow was also optimized, and lint configuration was aligned with the isort/black formatting assumptions. API request validation issues found during code review have been fixed, with the review notes and responses kept in the repository.
+Improves X profile image rendering so `frame_text` stays readable while preserving the intended glyph rule: `inner_text` draws the frame shape, and `outer_text` fills only the area outside that frame.
 
 ## Changes
 
-- Added characterization tests for glyph_forge services, clarifying expectations for text image conversion, grid filling, binarization, and API responses.
-- Added `GlyphForgeConfig` to centralize rendering settings such as maximum characters, frame/output font sizes, inner/outer colors, and background color.
-- Made frame text wrapping and centering configurable, and added separate color rendering for inner/outer text.
-- Updated the FastAPI `/images` endpoint to accept a compact request with fewer required fields for image generation.
-- Added the `/health` endpoint for a simple application health check.
-- Fixed API request validation so empty strings, positive-number constraints, RGB ranges, and unknown fields are handled as 422 responses at the FastAPI/Pydantic boundary.
-- Optimized threshold handling in `convert_image_to_01_list` and clarified the image pixel scan flow.
-- Added `.flake8` and `pyproject.toml` to align isort/black assumptions with CI lint formatting.
-- Added code review notes and response records under `review/`.
-
-## Review Response
-
-The following items raised in `review/code-review-2026-07-08.md` were addressed in `fa8fd3e`.
-
-- Fixed invalid numeric request options returning 500 by moving them to schema validation with 422 responses.
-- Fixed legacy fields (`frame_columns`, `frame_rows`) being silently ignored by forbidding extra fields and returning 422.
-- Fixed empty `frame_text` reaching the renderer and causing 500 by adding non-empty validation.
-- Removed the remaining RGB channel range risk with 0-255 field constraints.
+- Renders profile images from separate inner and outer text layers.
+- Clips `outer_text` to the outside of the frame mask and `inner_text` to the inside.
+- Keeps `inner_text` and `outer_text` at the same profile font size.
+- Uses a larger profile frame region so `frame_text` is less likely to collapse.
+- Wraps X icon frame shapes more tightly for readability while keeping the background frame line wider.
+- Adds regression tests for color isolation, frame shape readability, wrapping behavior, and text-size consistency.
 
 ## Verification
 
@@ -37,4 +23,4 @@ The following items raised in `review/code-review-2026-07-08.md` were addressed 
 ## Notes
 
 - Target PR branch: `feature/expansion`
-- Expected comparison base: `v1.0.0`
+- `blog/` and `diary/` files are intentionally left out of commit history.
