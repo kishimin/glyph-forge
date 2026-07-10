@@ -127,7 +127,7 @@ def _visible_frame_text_size(
     line_spacing = max(1, round(line_height * VISIBLE_FRAME_TEXT_LINE_SPACING_RATIO))
     width = max((width for width, _ in line_sizes), default=font.size)
     height = line_height + line_spacing * (len(text_lines) - 1)
-    return max(1, width), max(1, height)
+    return max(1, round(width)), max(1, round(height))
 
 
 def _text_bbox_size(text: str, font: ImageFont.FreeTypeFont) -> tuple[int, int]:
