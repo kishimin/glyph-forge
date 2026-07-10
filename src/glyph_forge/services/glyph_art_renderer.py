@@ -9,6 +9,7 @@ from glyph_forge.services.settings import (
     DEFAULT_X_ICON_SIZE,
     TRANSPARENT_BACKGROUND_COLOR,
     UNCROPPED_FRAME_CELL_PADDING_RATIO,
+    Color,
     GlyphForgeConfig,
 )
 from glyph_forge.services.text_image_renderer import (
@@ -20,7 +21,6 @@ from glyph_forge.services.text_image_renderer import (
 
 VISIBLE_FRAME_TEXT_LINE_SPACING_RATIO = 1.1
 VISIBLE_FRAME_MASK_FILTER_SIZE = 17
-PROFILE_TEXT_FONT_SIZE = 14
 PROFILE_FRAME_REGION_DIVISIONS = 1.45
 X_ICON_FRAME_MAX_CHARS_PER_LINE = 2
 
@@ -28,7 +28,7 @@ X_ICON_FRAME_MAX_CHARS_PER_LINE = 2
 def _build_color_grid(
     binary_grid: list[list[int]],
     config: GlyphForgeConfig,
-) -> list[list[tuple[int, int, int]]]:
+) -> list[list[Color]]:
     return [
         [
             config.outer_color if binary_value == 1 else config.inner_color
@@ -73,11 +73,7 @@ def _profile_frame_region_size(canvas_size: tuple[int, int]) -> tuple[int, int]:
     )
 
 
-def _with_visible_layout(
-    frame_text: str,
-    canvas_size: tuple[int, int],
-    config: GlyphForgeConfig,
-) -> GlyphForgeConfig:
+def _with_visible_layout(config: GlyphForgeConfig) -> GlyphForgeConfig:
     safe_config = _with_uncropped_frame(config)
     visible_max_chars_per_line = _visible_max_chars_per_line(
         safe_config.max_chars_per_line,
@@ -85,7 +81,7 @@ def _with_visible_layout(
     return GlyphForgeConfig(
         max_chars_per_line=visible_max_chars_per_line,
         frame_font_size=safe_config.frame_font_size,
-        output_font_size=PROFILE_TEXT_FONT_SIZE,
+        output_font_size=safe_config.output_font_size,
         frame_cell_padding_ratio=safe_config.frame_cell_padding_ratio,
         inner_color=safe_config.inner_color,
         outer_color=safe_config.outer_color,
@@ -241,9 +237,9 @@ def render_glyph_art_image(
 def _fit_image_on_canvas(
     img: Image.Image,
     canvas_size: tuple[int, int],
-    background_color: tuple[int, int, int] | tuple[int, int, int, int],
+    background_color: Color,
     outer_text: str,
-    outer_color: tuple[int, int, int],
+    outer_color: Color,
     output_font_size: int,
 ) -> Image.Image:
     fit_size = _center_region_size(canvas_size)
@@ -312,9 +308,9 @@ def _keep_text_alpha_only_in_mask(img: Image.Image, mask: Image.Image) -> None:
 def _render_tiled_text_canvas(
     canvas_size: tuple[int, int],
     text: str,
-    color: tuple[int, int, int],
+    color: Color,
     output_font_size: int,
-    background_color: tuple[int, int, int] | tuple[int, int, int, int],
+    background_color: Color,
 ) -> Image.Image:
     if not text:
         raise ValueError("text must not be empty")
@@ -336,9 +332,9 @@ def _render_tiled_text_canvas(
 
 def _render_outer_text_canvas(
     canvas_size: tuple[int, int],
-    background_color: tuple[int, int, int] | tuple[int, int, int, int],
+    background_color: Color,
     outer_text: str,
-    outer_color: tuple[int, int, int],
+    outer_color: Color,
     output_font_size: int,
 ) -> Image.Image:
     if not outer_text:
@@ -373,9 +369,7 @@ def render_x_icon_image(
         frame_text,
         inner_text,
         outer_text,
-        _with_visible_layout(
-            frame_text, _center_region_size(DEFAULT_X_ICON_SIZE), config
-        ),
+        _with_visible_layout(config),
         min(config.max_chars_per_line, X_ICON_FRAME_MAX_CHARS_PER_LINE),
     )
 
@@ -391,8 +385,6 @@ def render_background_image(
         frame_text,
         inner_text,
         outer_text,
-        _with_visible_layout(
-            frame_text, _center_region_size(DEFAULT_BACKGROUND_SIZE), config
-        ),
+        _with_visible_layout(config),
         config.max_chars_per_line,
     )

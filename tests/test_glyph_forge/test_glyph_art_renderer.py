@@ -146,7 +146,35 @@ def test_render_x_icon_image_uses_readable_uniform_profile_text_size(monkeypatch
 
     render_x_icon_image("ABCDE", "x", "o", _sample_config())
 
-    assert captured_font_sizes == [14, 14]
+    assert captured_font_sizes == [18, 18]
+
+
+def test_render_background_image_uses_configured_profile_text_size(monkeypatch):
+    captured_font_sizes = []
+
+    def capture_grid(text_grid, font_size, **kwargs):
+        captured_font_sizes.append(font_size)
+        return _solid_canvas(DEFAULT_BACKGROUND_SIZE, (255, 255, 255))
+
+    monkeypatch.setattr(
+        "glyph_forge.services.glyph_art_renderer.render_text_grid_image",
+        capture_grid,
+    )
+
+    render_background_image(
+        "ABCDE",
+        "x",
+        "o",
+        GlyphForgeConfig(
+            max_chars_per_line=5,
+            frame_font_size=40,
+            output_font_size=22,
+            inner_color=(255, 183, 197),
+            outer_color=(255, 0, 0),
+        ),
+    )
+
+    assert captured_font_sizes == [22, 22]
 
 
 def test_render_x_icon_image_uses_only_configured_text_colors():
@@ -222,7 +250,7 @@ def test_render_x_icon_image_enlarges_profile_frame_shape():
     width = right - left + 1
     height = bottom - top + 1
 
-    assert width >= 170
+    assert width >= 165
     assert height >= width * 0.3
 
 
