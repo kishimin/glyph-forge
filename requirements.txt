@@ -2,6 +2,7 @@ autoflake==2.3.3
 black==24.4.2
 fastapi==0.138.1
 flake8==7.0.0
+httpx2==2.5.0
 isort==5.13.2
 matplotlib==3.8.4
 numpy==1.26.4
