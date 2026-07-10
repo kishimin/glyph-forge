@@ -1,21 +1,28 @@
-from math import ceil, floor
+from math import ceil
 
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from glyph_forge.services.glyph_text_grid import binary_grid_to_text_grid
 from glyph_forge.services.settings import (
     DEFAULT_BACKGROUND_SIZE,
     DEFAULT_CANVAS_GRID_DIVISIONS,
     DEFAULT_X_ICON_SIZE,
-    MIN_READABLE_OUTPUT_FONT_SIZE,
+    TRANSPARENT_BACKGROUND_COLOR,
     UNCROPPED_FRAME_CELL_PADDING_RATIO,
     GlyphForgeConfig,
 )
 from glyph_forge.services.text_image_renderer import (
+    load_font,
     render_text_grid_image,
     render_text_image,
     split_text_lines,
 )
+
+VISIBLE_FRAME_TEXT_LINE_SPACING_RATIO = 1.1
+VISIBLE_FRAME_MASK_FILTER_SIZE = 17
+PROFILE_TEXT_FONT_SIZE = 14
+PROFILE_FRAME_REGION_DIVISIONS = 1.45
+X_ICON_FRAME_MAX_CHARS_PER_LINE = 2
 
 
 def _build_color_grid(
@@ -52,31 +59,17 @@ def _visible_max_chars_per_line(
     return configured_max_chars_per_line
 
 
-def _visible_frame_font_size(
-    frame_text: str,
-    canvas_size: tuple[int, int],
-    max_chars_per_line: int,
-    configured_frame_font_size: int,
-    frame_cell_padding_ratio: float,
-) -> int:
-    row_count = ceil(len(frame_text) / max_chars_per_line)
-    fit_width = canvas_size[0]
-    fit_height = canvas_size[1]
-    padded_cell_ratio = 1 + frame_cell_padding_ratio * 2
-    max_size_by_width = fit_width / (
-        max_chars_per_line * MIN_READABLE_OUTPUT_FONT_SIZE * padded_cell_ratio
-    )
-    max_size_by_height = fit_height / (
-        row_count * MIN_READABLE_OUTPUT_FONT_SIZE * padded_cell_ratio
-    )
-    visible_font_size = floor(min(max_size_by_width, max_size_by_height))
-    return max(1, min(configured_frame_font_size, visible_font_size))
-
-
 def _center_region_size(canvas_size: tuple[int, int]) -> tuple[int, int]:
     return (
         max(1, canvas_size[0] // DEFAULT_CANVAS_GRID_DIVISIONS),
         max(1, canvas_size[1] // DEFAULT_CANVAS_GRID_DIVISIONS),
+    )
+
+
+def _profile_frame_region_size(canvas_size: tuple[int, int]) -> tuple[int, int]:
+    return (
+        max(1, round(canvas_size[0] / PROFILE_FRAME_REGION_DIVISIONS)),
+        max(1, round(canvas_size[1] / PROFILE_FRAME_REGION_DIVISIONS)),
     )
 
 
@@ -91,14 +84,8 @@ def _with_visible_layout(
     )
     return GlyphForgeConfig(
         max_chars_per_line=visible_max_chars_per_line,
-        frame_font_size=_visible_frame_font_size(
-            frame_text,
-            canvas_size,
-            visible_max_chars_per_line,
-            safe_config.frame_font_size,
-            safe_config.frame_cell_padding_ratio,
-        ),
-        output_font_size=safe_config.output_font_size,
+        frame_font_size=safe_config.frame_font_size,
+        output_font_size=PROFILE_TEXT_FONT_SIZE,
         frame_cell_padding_ratio=safe_config.frame_cell_padding_ratio,
         inner_color=safe_config.inner_color,
         outer_color=safe_config.outer_color,
@@ -135,6 +122,70 @@ def _fit_frame_image_to_output_grid(
     return fitted_img
 
 
+def _visible_frame_text_size(
+    text_lines: list[str],
+    font: ImageFont.FreeTypeFont,
+) -> tuple[int, int]:
+    line_sizes = [_text_bbox_size(line, font) for line in text_lines]
+    line_height = max((height for _, height in line_sizes), default=font.size)
+    line_spacing = max(1, round(line_height * VISIBLE_FRAME_TEXT_LINE_SPACING_RATIO))
+    width = max((width for width, _ in line_sizes), default=font.size)
+    height = line_height + line_spacing * (len(text_lines) - 1)
+    return max(1, width), max(1, height)
+
+
+def _text_bbox_size(text: str, font: ImageFont.FreeTypeFont) -> tuple[int, int]:
+    left, top, right, bottom = font.getbbox(text)
+    return right - left, bottom - top
+
+
+def _render_center_frame_mask(
+    frame_text: str,
+    max_chars_per_line: int,
+    canvas_size: tuple[int, int],
+) -> Image.Image:
+    text_lines = split_text_lines(frame_text, max_chars_per_line)
+    font_size = canvas_size[1]
+    while font_size > 1:
+        font = load_font(font_size)
+        text_size = _visible_frame_text_size(text_lines, font)
+        if text_size[0] <= canvas_size[0] and text_size[1] <= canvas_size[1]:
+            return _draw_frame_mask(text_lines, font, canvas_size)
+        font_size -= 1
+
+    return _draw_frame_mask(text_lines, load_font(font_size), canvas_size)
+
+
+def _draw_frame_mask(
+    text_lines: list[str],
+    font: ImageFont.FreeTypeFont,
+    canvas_size: tuple[int, int],
+) -> Image.Image:
+    mask = Image.new("L", canvas_size, 0)
+    draw = ImageDraw.Draw(mask)
+    line_sizes = [_text_bbox_size(line, font) for line in text_lines]
+    line_height = max((height for _, height in line_sizes), default=font.size)
+    line_spacing = max(1, round(line_height * VISIBLE_FRAME_TEXT_LINE_SPACING_RATIO))
+    content_height = line_height + line_spacing * (len(text_lines) - 1)
+    y = (mask.height - content_height) / 2
+    for line, (line_width, _) in zip(text_lines, line_sizes):
+        left, top, _, _ = font.getbbox(line)
+        x = (mask.width - line_width) / 2 - left
+        draw.text((x, y - top), line, fill=255, font=font)
+        y += line_spacing
+    return mask.point(lambda alpha: 255 if alpha else 0)
+
+
+def _expand_frame_mask(frame_mask: Image.Image) -> Image.Image:
+    return frame_mask.filter(ImageFilter.MaxFilter(VISIBLE_FRAME_MASK_FILTER_SIZE))
+
+
+def _paste_centered(base_img: Image.Image, overlay_img: Image.Image) -> None:
+    x = (base_img.width - overlay_img.width) // 2
+    y = (base_img.height - overlay_img.height) // 2
+    base_img.paste(overlay_img, (x, y), overlay_img)
+
+
 def render_glyph_art_image(
     frame_text: str,
     inner_text: str,
@@ -168,12 +219,23 @@ def render_glyph_art_image(
     text_grid = binary_grid_to_text_grid(binary_grid, inner_text, outer_text)
     color_grid = _build_color_grid(binary_grid, config)
 
-    return render_text_grid_image(
+    glyph_img = render_text_grid_image(
         text_grid,
         config.output_font_size,
         color_grid=color_grid,
-        background_color=config.background_color,
+        background_color=(
+            TRANSPARENT_BACKGROUND_COLOR
+            if max_output_size is not None
+            else config.background_color
+        ),
     )
+    if max_output_size is not None:
+        centered_glyph_img = Image.new(
+            "RGBA", max_output_size, TRANSPARENT_BACKGROUND_COLOR
+        )
+        _paste_centered(centered_glyph_img, glyph_img)
+        return centered_glyph_img
+    return glyph_img
 
 
 def _fit_image_on_canvas(
@@ -185,21 +247,88 @@ def _fit_image_on_canvas(
     output_font_size: int,
 ) -> Image.Image:
     fit_size = _center_region_size(canvas_size)
-    scale = min(fit_size[0] / img.width, fit_size[1] / img.height, 1)
-    fitted_output_font_size = max(1, round(output_font_size * scale))
     canvas = _render_outer_text_canvas(
         canvas_size,
         background_color,
         outer_text,
         outer_color,
-        fitted_output_font_size,
+        output_font_size,
     )
     fitted_img = img.copy()
     fitted_img.thumbnail(fit_size, Image.Resampling.NEAREST)
-    x = (canvas.width - fitted_img.width) // 2
-    y = (canvas.height - fitted_img.height) // 2
-    canvas.paste(fitted_img, (x, y), fitted_img)
+    _paste_centered(canvas, fitted_img)
     return canvas
+
+
+def _render_profile_canvas(
+    canvas_size: tuple[int, int],
+    frame_text: str,
+    inner_text: str,
+    outer_text: str,
+    config: GlyphForgeConfig,
+    frame_max_chars_per_line: int,
+) -> Image.Image:
+    center_size = _profile_frame_region_size(canvas_size)
+    center_mask = _render_center_frame_mask(
+        frame_text,
+        frame_max_chars_per_line,
+        center_size,
+    )
+    center_mask = _expand_frame_mask(center_mask)
+    center_left = (canvas_size[0] - center_size[0]) // 2
+    center_top = (canvas_size[1] - center_size[1]) // 2
+
+    profile_img = Image.new("RGBA", canvas_size, config.background_color)
+    outer_img = _render_tiled_text_canvas(
+        canvas_size,
+        outer_text,
+        config.outer_color,
+        config.output_font_size,
+        background_color=TRANSPARENT_BACKGROUND_COLOR,
+    )
+    inner_img = _render_tiled_text_canvas(
+        canvas_size,
+        inner_text,
+        config.inner_color,
+        config.output_font_size,
+        background_color=TRANSPARENT_BACKGROUND_COLOR,
+    )
+    full_mask = Image.new("L", canvas_size, 0)
+    full_mask.paste(center_mask, (center_left, center_top))
+    outside_mask = full_mask.point(lambda alpha: 0 if alpha else 255)
+    _keep_text_alpha_only_in_mask(outer_img, outside_mask)
+    _keep_text_alpha_only_in_mask(inner_img, full_mask)
+    profile_img.alpha_composite(outer_img)
+    profile_img.alpha_composite(inner_img)
+    return profile_img
+
+
+def _keep_text_alpha_only_in_mask(img: Image.Image, mask: Image.Image) -> None:
+    clipped_alpha = Image.new("L", img.size, 0)
+    clipped_alpha.paste(img.getchannel("A"), mask=mask)
+    img.putalpha(clipped_alpha)
+
+
+def _render_tiled_text_canvas(
+    canvas_size: tuple[int, int],
+    text: str,
+    color: tuple[int, int, int],
+    output_font_size: int,
+    background_color: tuple[int, int, int] | tuple[int, int, int, int],
+) -> Image.Image:
+    columns = ceil(canvas_size[0] / output_font_size)
+    rows = ceil(canvas_size[1] / output_font_size)
+    chars = (text * (ceil(columns * rows / len(text))))[: columns * rows]
+    text_grid = [
+        list(chars[index : index + columns]) for index in range(0, len(chars), columns)
+    ]
+    img = render_text_grid_image(
+        text_grid,
+        output_font_size,
+        fill=color,
+        background_color=background_color,
+    )
+    return img.crop((0, 0, canvas_size[0], canvas_size[1]))
 
 
 def _render_outer_text_canvas(
@@ -233,24 +362,15 @@ def render_x_icon_image(
     outer_text: str,
     config: GlyphForgeConfig,
 ) -> Image.Image:
-    art = render_glyph_art_image(
+    return _render_profile_canvas(
+        DEFAULT_X_ICON_SIZE,
         frame_text,
         inner_text,
         outer_text,
-        config=_with_visible_layout(
-            frame_text,
-            _center_region_size(DEFAULT_X_ICON_SIZE),
-            config,
+        _with_visible_layout(
+            frame_text, _center_region_size(DEFAULT_X_ICON_SIZE), config
         ),
-        max_output_size=_center_region_size(DEFAULT_X_ICON_SIZE),
-    )
-    return _fit_image_on_canvas(
-        art,
-        DEFAULT_X_ICON_SIZE,
-        config.background_color,
-        outer_text,
-        config.outer_color,
-        config.output_font_size,
+        min(config.max_chars_per_line, X_ICON_FRAME_MAX_CHARS_PER_LINE),
     )
 
 
@@ -260,22 +380,13 @@ def render_background_image(
     outer_text: str,
     config: GlyphForgeConfig,
 ) -> Image.Image:
-    art = render_glyph_art_image(
+    return _render_profile_canvas(
+        DEFAULT_BACKGROUND_SIZE,
         frame_text,
         inner_text,
         outer_text,
-        config=_with_visible_layout(
-            frame_text,
-            _center_region_size(DEFAULT_BACKGROUND_SIZE),
-            config,
+        _with_visible_layout(
+            frame_text, _center_region_size(DEFAULT_BACKGROUND_SIZE), config
         ),
-        max_output_size=_center_region_size(DEFAULT_BACKGROUND_SIZE),
-    )
-    return _fit_image_on_canvas(
-        art,
-        DEFAULT_BACKGROUND_SIZE,
-        config.background_color,
-        outer_text,
-        config.outer_color,
-        config.output_font_size,
+        config.max_chars_per_line,
     )
