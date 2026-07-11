@@ -13,6 +13,7 @@ Updates `README.md` from a minimal two-line description into a project guide for
 - Adds Python and API usage examples.
 - Documents available API endpoints and request body fields.
 - Adds command and troubleshooting sections.
+- Allows the release workflow to update an existing GitHub Release when a tag is corrected.
 
 ## Verification
 
@@ -22,8 +23,10 @@ Updates `README.md` from a minimal two-line description into a project guide for
   - `src/glyph_forge/services/settings.py`
   - `requirements.txt`
   - `setup.py`
+- Confirmed `v2.0.1` tag workflow completed successfully.
 
 ## Notes
 
-- This is a documentation-only change.
+- `v2.0.0` was restored to the previous release commit.
+- `v2.0.1` points to the new README and release workflow updates.
 - `.gitignore` is intentionally not included.
