@@ -115,4 +115,5 @@ jobs:
           artifacts: dist/*
           token: ${{ secrets.GITHUB_TOKEN }}
           allowUpdates: true
+          omitBodyDuringUpdate: true
           draft: false
