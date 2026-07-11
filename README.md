@@ -97,7 +97,7 @@ Install Python 3.12.
 
 ```bash
 git clone https://github.com/kishimin/glyph-forge.git
-cd glyph-forge
+cd <repository-directory>
 ```
 
 ### Create a Virtual Environment
@@ -151,12 +151,12 @@ from glyph_forge.services.glyph_art_renderer import render_glyph_art_image
 from glyph_forge.services.settings import GlyphForgeConfig
 
 img = render_glyph_art_image(
-    frame_text="ひなのん",
-    inner_text="のんびり",
-    outer_text="はんなり",
+    frame_text="FRAME",
+    inner_text="INNER",
+    outer_text="OUTER",
     config=GlyphForgeConfig(
-        inner_color=(255, 183, 197),
-        outer_color=(255, 0, 0),
+        inner_color=(64, 128, 255),
+        outer_color=(255, 128, 64),
     ),
 )
 
@@ -165,18 +165,32 @@ img.save("output/sample.png")
 
 ### API Request
 
-```bash
-curl -X POST http://localhost:8000/images \
-  -H "Content-Type: application/json" \
-  -o output/sample.png \
-  -d '{
-    "frame_text": "ひなのん",
-    "inner_text": "のんびり",
-    "outer_text": "はんなり",
-    "inner_color": [255, 183, 197],
-    "outer_color": [255, 0, 0],
-    "max_chars_per_line": 5
-  }'
+Use Python's standard library to avoid shell-specific quoting differences.
+
+```python
+import json
+import urllib.request
+from pathlib import Path
+
+payload = {
+    "frame_text": "FRAME",
+    "inner_text": "INNER",
+    "outer_text": "OUTER",
+    "inner_color": [64, 128, 255],
+    "outer_color": [255, 128, 64],
+    "max_chars_per_line": 5,
+}
+
+request = urllib.request.Request(
+    "http://localhost:8000/images",
+    data=json.dumps(payload).encode("utf-8"),
+    headers={"Content-Type": "application/json; charset=utf-8"},
+    method="POST",
+)
+
+Path("output").mkdir(exist_ok=True)
+with urllib.request.urlopen(request) as response:
+    Path("output/sample.png").write_bytes(response.read())
 ```
 
 <p align="right">(<a href="#top">back to top</a>)</p>

@@ -9,8 +9,9 @@ Updates `README.md` from a minimal two-line description into a project guide for
 - Adds a project overview that explains `frame_text`, `inner_text`, and `outer_text`.
 - Adds Python/FastAPI/Pillow/pytest tech stack badges.
 - Documents the current directory structure.
-- Adds setup steps for Python 3.12 and editable package installation.
+- Adds setup steps for Python 3.12 and editable package installation without assuming the local checkout directory name.
 - Adds Python and API usage examples.
+- Uses a Python standard-library API request example instead of shell-specific curl quoting.
 - Documents available API endpoints and request body fields.
 - Adds command and troubleshooting sections.
 - Allows the release workflow to update an existing GitHub Release when a tag is corrected.
