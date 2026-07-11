@@ -15,3 +15,9 @@ src/*.egg-info/
 
 # output
 output/
+
+# AI
+.agents/
+.codex/
+blog/
+diary/
