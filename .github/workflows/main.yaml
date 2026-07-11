@@ -114,4 +114,5 @@ jobs:
         with:
           artifacts: dist/*
           token: ${{ secrets.GITHUB_TOKEN }}
+          allowUpdates: true
           draft: false
