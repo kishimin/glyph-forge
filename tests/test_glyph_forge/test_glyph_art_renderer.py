@@ -8,6 +8,7 @@ from glyph_forge.services.glyph_art_renderer import (
     _render_tiled_text_canvas,
     render_background_image,
     render_glyph_art_image,
+    render_image_frame_art_image,
     render_x_icon_image,
 )
 from glyph_forge.services.settings import (
@@ -200,6 +201,31 @@ def test_render_background_image_uses_only_configured_text_colors():
         _sample_config().inner_color,
         _sample_config().outer_color,
     }
+
+
+def test_render_image_frame_art_image_uses_uploaded_image_shape_as_inner_text():
+    frame_img = _fake_frame_image(
+        [
+            (0, 0, 0),
+            (255, 255, 255),
+        ]
+    )
+
+    img = render_image_frame_art_image(
+        frame_img,
+        "x",
+        "o",
+        config=GlyphForgeConfig(
+            output_font_size=24,
+            inner_color=(255, 0, 0),
+            outer_color=(0, 0, 255),
+        ),
+    )
+    left_colors = _image_color_set(img.crop((0, 0, 24, 24)))
+    right_colors = _image_color_set(img.crop((24, 0, 48, 24)))
+
+    assert (255, 0, 0) in left_colors
+    assert (0, 0, 255) in right_colors
 
 
 def test_frame_binary_grid_keeps_antialiased_frame_pixels_inside_inner_text():

@@ -1,4 +1,7 @@
+from io import BytesIO
+
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from app.main import app
 
@@ -72,6 +75,44 @@ def test_generate_background_image_returns_png():
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/png"
     assert response.content.startswith(b"\x89PNG")
+
+
+def test_generate_image_from_uploaded_frame_image_returns_png():
+    client = TestClient(app)
+    upload_buffer = BytesIO()
+    Image.new("RGB", (2, 1), (255, 255, 255)).save(upload_buffer, format="PNG")
+    upload_buffer.seek(0)
+
+    response = client.post(
+        "/images/frame-file",
+        data={
+            "inner_text": "INNER_TEXT_SAMPLE",
+            "outer_text": "OUTER_TEXT_SAMPLE",
+            "inner_color": "255,183,197",
+            "outer_color": "255,0,0",
+            "output_font_size": "24",
+        },
+        files={"frame_image": ("frame.png", upload_buffer, "image/png")},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.content.startswith(b"\x89PNG")
+
+
+def test_generate_image_from_uploaded_frame_image_rejects_invalid_file():
+    client = TestClient(app)
+
+    response = client.post(
+        "/images/frame-file",
+        data={
+            "inner_text": "INNER_TEXT_SAMPLE",
+            "outer_text": "OUTER_TEXT_SAMPLE",
+        },
+        files={"frame_image": ("frame.txt", BytesIO(b"not an image"), "text/plain")},
+    )
+
+    assert response.status_code == 422
 
 
 def test_generate_image_rejects_non_positive_options():

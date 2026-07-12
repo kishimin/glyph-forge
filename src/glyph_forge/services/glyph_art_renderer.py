@@ -3,6 +3,10 @@ from math import ceil
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from glyph_forge.services.glyph_text_grid import binary_grid_to_text_grid
+from glyph_forge.services.image_threshold import (
+    grayscale_grid_to_binary_grid,
+    image_to_grayscale_grid,
+)
 from glyph_forge.services.settings import (
     DEFAULT_BACKGROUND_SIZE,
     DEFAULT_CANVAS_GRID_DIVISIONS,
@@ -262,6 +266,27 @@ def render_glyph_art_image(
         _paste_centered(centered_glyph_img, glyph_img)
         return centered_glyph_img
     return glyph_img
+
+
+def render_image_frame_art_image(
+    frame_img: Image.Image,
+    inner_text: str,
+    outer_text: str,
+    *,
+    config: GlyphForgeConfig | None = None,
+) -> Image.Image:
+    if config is None:
+        config = GlyphForgeConfig()
+
+    binary_grid = grayscale_grid_to_binary_grid(image_to_grayscale_grid(frame_img))
+    text_grid = binary_grid_to_text_grid(binary_grid, inner_text, outer_text)
+    color_grid = _build_color_grid(binary_grid, config)
+    return render_text_grid_image(
+        text_grid,
+        config.output_font_size,
+        color_grid=color_grid,
+        background_color=config.background_color,
+    )
 
 
 def _fit_image_on_canvas(

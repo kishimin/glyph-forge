@@ -1,13 +1,20 @@
 from io import BytesIO
 
-from fastapi import FastAPI, HTTPException, responses
+from fastapi import FastAPI, HTTPException, Request, responses
 from PIL import Image
+from starlette.datastructures import UploadFile
 
 from app.schemas import GenerateImageRequest
 from glyph_forge.services.glyph_art_renderer import (
     render_background_image,
     render_glyph_art_image,
+    render_image_frame_art_image,
     render_x_icon_image,
+)
+from glyph_forge.services.settings import (
+    DEFAULT_OUTPUT_FONT_SIZE,
+    DEFAULT_TEXT_COLOR,
+    GlyphForgeConfig,
 )
 
 app = FastAPI()
@@ -30,6 +37,57 @@ def _render_or_422(render_image) -> responses.StreamingResponse:
         return _png_response(render_image())
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+def _form_value(form, name: str) -> str:
+    value = form.get(name)
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{name} must not be empty")
+    return value
+
+
+def _form_positive_int(form, name: str, default: int) -> int:
+    value = form.get(name)
+    if value is None or value == "":
+        return default
+    try:
+        parsed_value = int(value)
+    except ValueError as error:
+        raise ValueError(f"{name} must be an integer") from error
+    if parsed_value < 1:
+        raise ValueError(f"{name} must be greater than 0")
+    return parsed_value
+
+
+def _form_rgb_color(form, name: str):
+    value = form.get(name)
+    if value is None or value == "":
+        return DEFAULT_TEXT_COLOR
+    if not isinstance(value, str):
+        raise ValueError(f"{name} must be a comma-separated RGB color")
+    parts = value.split(",")
+    if len(parts) != 3:
+        raise ValueError(f"{name} must be a comma-separated RGB color")
+    try:
+        color = tuple(int(part.strip()) for part in parts)
+    except ValueError as error:
+        raise ValueError(f"{name} must be a comma-separated RGB color") from error
+    if any(channel < 0 or channel > 255 for channel in color):
+        raise ValueError(f"{name} values must be between 0 and 255")
+    return color
+
+
+async def _uploaded_image(form) -> Image.Image:
+    frame_image = form.get("frame_image")
+    if not isinstance(frame_image, UploadFile):
+        raise ValueError("frame_image must be uploaded")
+    try:
+        image_bytes = await frame_image.read()
+        img = Image.open(BytesIO(image_bytes))
+        img.load()
+    except Exception as error:
+        raise ValueError("frame_image must be a valid image") from error
+    return img
 
 
 @app.post("/images")
@@ -66,3 +124,31 @@ def generate_background_image(generate_image_request: GenerateImageRequest):
             config=generate_image_request.to_config(),
         )
     )
+
+
+@app.post("/images/frame-file")
+async def generate_image_from_frame_file(request: Request):
+    try:
+        form = await request.form()
+        frame_img = await _uploaded_image(form)
+        inner_text = _form_value(form, "inner_text")
+        outer_text = _form_value(form, "outer_text")
+        config = GlyphForgeConfig(
+            output_font_size=_form_positive_int(
+                form,
+                "output_font_size",
+                DEFAULT_OUTPUT_FONT_SIZE,
+            ),
+            inner_color=_form_rgb_color(form, "inner_color"),
+            outer_color=_form_rgb_color(form, "outer_color"),
+        )
+        return _png_response(
+            render_image_frame_art_image(
+                frame_img,
+                inner_text,
+                outer_text,
+                config=config,
+            )
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
