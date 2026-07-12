@@ -264,6 +264,17 @@ def test_render_x_icon_image_enlarges_profile_frame_shape():
     assert height >= width * 0.3
 
 
+def test_render_x_icon_image_maximizes_frame_shape_on_icon_canvas():
+    img = render_x_icon_image("ABCD", "x", "o", _sample_config())
+
+    left, right, top, bottom = _inner_bounds(img)
+    width = right - left + 1
+    height = bottom - top + 1
+
+    assert width >= img.width * 0.6
+    assert height >= img.height * 0.6
+
+
 def test_render_x_icon_image_wraps_frame_shape_for_icon_readability():
     img = render_x_icon_image("ABCD", "x", "o", _sample_config())
 
@@ -282,6 +293,17 @@ def test_render_background_image_keeps_five_character_frame_line():
     height = bottom - top + 1
 
     assert width > height
+
+
+def test_render_background_image_maximizes_frame_shape_on_banner_canvas():
+    img = render_background_image("ABCD", "x", "o", _sample_config())
+
+    left, right, top, bottom = _inner_bounds(img)
+    width = right - left + 1
+    height = bottom - top + 1
+
+    assert width >= img.width * 0.8
+    assert height >= img.height * 0.7
 
 
 def test_render_x_icon_image_keeps_outer_text_visible_in_center_region():

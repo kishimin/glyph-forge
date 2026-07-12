@@ -21,7 +21,7 @@ from glyph_forge.services.text_image_renderer import (
 
 VISIBLE_FRAME_TEXT_LINE_SPACING_RATIO = 1.1
 VISIBLE_FRAME_MASK_FILTER_SIZE = 17
-PROFILE_FRAME_REGION_DIVISIONS = 1.45
+PROFILE_FRAME_CANVAS_FILL_RATIO = 1.0
 
 
 def _build_color_grid(
@@ -105,8 +105,8 @@ def _center_region_size(canvas_size: tuple[int, int]) -> tuple[int, int]:
 
 def _profile_frame_region_size(canvas_size: tuple[int, int]) -> tuple[int, int]:
     return (
-        max(1, round(canvas_size[0] / PROFILE_FRAME_REGION_DIVISIONS)),
-        max(1, round(canvas_size[1] / PROFILE_FRAME_REGION_DIVISIONS)),
+        max(1, round(canvas_size[0] * PROFILE_FRAME_CANVAS_FILL_RATIO)),
+        max(1, round(canvas_size[1] * PROFILE_FRAME_CANVAS_FILL_RATIO)),
     )
 
 
