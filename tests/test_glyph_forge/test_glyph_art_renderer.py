@@ -3,6 +3,7 @@ import pytest
 from glyph_forge.services.glyph_art_renderer import (
     _fit_image_on_canvas,
     _frame_image_to_binary_grid,
+    _maximized_frame_chars_per_line,
     _render_outer_text_canvas,
     _render_tiled_text_canvas,
     render_background_image,
@@ -219,6 +220,14 @@ def test_render_x_icon_image_uses_icon_canvas_without_edge_cropping():
     assert _outer_side_color_ratio(img) > 0.01
 
 
+def test_render_x_icon_image_uses_four_hundred_square_canvas():
+    img = render_x_icon_image(
+        "FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config()
+    )
+
+    assert img.size == (400, 400)
+
+
 def test_render_x_icon_image_uses_configured_background_color():
     img = render_x_icon_image(
         "FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config()
@@ -249,8 +258,9 @@ def test_render_x_icon_image_enlarges_profile_frame_shape():
     left, right, top, bottom = _inner_bounds(_center_region(img))
     width = right - left + 1
     height = bottom - top + 1
+    center_width, _ = _center_region_size(img)
 
-    assert width >= 165
+    assert width >= center_width * 0.9
     assert height >= width * 0.3
 
 
@@ -292,12 +302,28 @@ def test_render_background_image_uses_background_canvas_without_edge_cropping():
     assert _outer_side_color_ratio(img) > 0.01
 
 
+def test_render_background_image_uses_fifteen_hundred_by_five_hundred_canvas():
+    img = render_background_image(
+        "FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config()
+    )
+
+    assert img.size == (1500, 500)
+
+
 def test_render_background_image_uses_configured_background_color():
     img = render_background_image(
         "FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config()
     )
 
     assert img.getpixel((0, 0)) == (255, 255, 255, 255)
+
+
+def test_frame_layout_uses_canvas_ratio_to_maximize_text_size():
+    wide_chars = _maximized_frame_chars_per_line("ABCDEFGHIJKL", 5, (1000, 300))
+    square_chars = _maximized_frame_chars_per_line("ABCDEFGHIJKL", 5, (300, 300))
+
+    assert wide_chars > 5
+    assert square_chars < wide_chars
 
 
 def test_render_glyph_art_image_wraps_frame_text_at_five_characters():

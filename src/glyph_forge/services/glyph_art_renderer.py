@@ -22,7 +22,6 @@ from glyph_forge.services.text_image_renderer import (
 VISIBLE_FRAME_TEXT_LINE_SPACING_RATIO = 1.1
 VISIBLE_FRAME_MASK_FILTER_SIZE = 17
 PROFILE_FRAME_REGION_DIVISIONS = 1.45
-X_ICON_FRAME_MAX_CHARS_PER_LINE = 2
 
 
 def _build_color_grid(
@@ -57,6 +56,44 @@ def _visible_max_chars_per_line(
     configured_max_chars_per_line: int,
 ) -> int:
     return configured_max_chars_per_line
+
+
+def _maximized_frame_chars_per_line(
+    frame_text: str,
+    configured_max_chars_per_line: int,
+    canvas_size: tuple[int, int],
+) -> int:
+    if not frame_text:
+        raise ValueError("frame_text must not be empty")
+
+    best_chars_per_line = max(1, min(configured_max_chars_per_line, len(frame_text)))
+    best_font_size = 0
+    for chars_per_line in range(1, len(frame_text) + 1):
+        text_lines = split_text_lines(frame_text, chars_per_line)
+        font_size = _largest_fitting_font_size(text_lines, canvas_size)
+        if font_size > best_font_size:
+            best_chars_per_line = chars_per_line
+            best_font_size = font_size
+    return best_chars_per_line
+
+
+def _largest_fitting_font_size(
+    text_lines: list[str],
+    canvas_size: tuple[int, int],
+) -> int:
+    low = 1
+    high = max(1, canvas_size[1])
+    best_font_size = 1
+    while low <= high:
+        font_size = (low + high) // 2
+        font = load_font(font_size)
+        text_size = _visible_frame_text_size(text_lines, font)
+        if text_size[0] <= canvas_size[0] and text_size[1] <= canvas_size[1]:
+            best_font_size = font_size
+            low = font_size + 1
+        else:
+            high = font_size - 1
+    return best_font_size
 
 
 def _center_region_size(canvas_size: tuple[int, int]) -> tuple[int, int]:
@@ -141,14 +178,7 @@ def _render_center_frame_mask(
     canvas_size: tuple[int, int],
 ) -> Image.Image:
     text_lines = split_text_lines(frame_text, max_chars_per_line)
-    font_size = canvas_size[1]
-    while font_size > 1:
-        font = load_font(font_size)
-        text_size = _visible_frame_text_size(text_lines, font)
-        if text_size[0] <= canvas_size[0] and text_size[1] <= canvas_size[1]:
-            return _draw_frame_mask(text_lines, font, canvas_size)
-        font_size -= 1
-
+    font_size = _largest_fitting_font_size(text_lines, canvas_size)
     return _draw_frame_mask(text_lines, load_font(font_size), canvas_size)
 
 
@@ -265,9 +295,14 @@ def _render_profile_canvas(
     frame_max_chars_per_line: int,
 ) -> Image.Image:
     center_size = _profile_frame_region_size(canvas_size)
-    center_mask = _render_center_frame_mask(
+    visible_frame_max_chars_per_line = _maximized_frame_chars_per_line(
         frame_text,
         frame_max_chars_per_line,
+        center_size,
+    )
+    center_mask = _render_center_frame_mask(
+        frame_text,
+        visible_frame_max_chars_per_line,
         center_size,
     )
     center_mask = _expand_frame_mask(center_mask)
@@ -370,7 +405,7 @@ def render_x_icon_image(
         inner_text,
         outer_text,
         _with_visible_layout(config),
-        min(config.max_chars_per_line, X_ICON_FRAME_MAX_CHARS_PER_LINE),
+        config.max_chars_per_line,
     )
 
 
