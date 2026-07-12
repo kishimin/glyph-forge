@@ -16,6 +16,9 @@ src/*.egg-info/
 # output
 output/
 
+# input
+input/
+
 # AI
 .agents/
 .codex/
