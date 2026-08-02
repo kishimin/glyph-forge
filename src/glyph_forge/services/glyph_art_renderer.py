@@ -7,6 +7,7 @@ from glyph_forge.services.image_threshold import (
     grayscale_grid_to_binary_grid,
     image_to_grayscale_grid,
 )
+from glyph_forge.services.output_image_limits import validate_output_image_size
 from glyph_forge.services.settings import (
     DEFAULT_BACKGROUND_SIZE,
     DEFAULT_CANVAS_GRID_DIVISIONS,
@@ -19,6 +20,7 @@ from glyph_forge.services.text_image_renderer import (
     load_font,
     render_text_grid_image,
     render_text_image,
+    resolve_text_cell_size,
     split_text_lines,
 )
 
@@ -26,6 +28,15 @@ VISIBLE_FRAME_TEXT_LINE_SPACING_RATIO = 1.1
 VISIBLE_FRAME_MASK_FILTER_SIZE = 17
 PROFILE_FRAME_CANVAS_FILL_RATIO = 1.0
 GENERAL_FRAME_CHARS_PER_LINE = 5
+
+
+def _validate_glyph_grid_output_size(
+    grid_size: tuple[int, int],
+    text: str,
+    output_font_size: int,
+) -> None:
+    cell_size = resolve_text_cell_size(text, output_font_size)
+    validate_output_image_size((grid_size[0] * cell_size, grid_size[1] * cell_size))
 
 
 def _build_color_grid(
@@ -202,11 +213,17 @@ def render_glyph_art_image(
         background_color=config.background_color,
     )
     if max_output_size is not None:
+        validate_output_image_size(max_output_size)
         frame_img = _fit_frame_image_to_output_grid(
             frame_img,
             max_output_size,
             config.output_font_size,
         )
+    _validate_glyph_grid_output_size(
+        frame_img.size,
+        inner_text + outer_text,
+        config.output_font_size,
+    )
     binary_grid = _frame_image_to_binary_grid(frame_img)
     text_grid = binary_grid_to_text_grid(binary_grid, inner_text, outer_text)
     color_grid = _build_color_grid(binary_grid, config)
@@ -240,6 +257,11 @@ def render_image_frame_art_image(
     if config is None:
         config = GlyphForgeConfig()
 
+    _validate_glyph_grid_output_size(
+        frame_img.size,
+        inner_text + outer_text,
+        config.output_font_size,
+    )
     binary_grid = grayscale_grid_to_binary_grid(image_to_grayscale_grid(frame_img))
     text_grid = binary_grid_to_text_grid(binary_grid, inner_text, outer_text)
     color_grid = _build_color_grid(binary_grid, config)
@@ -280,6 +302,7 @@ def _render_profile_canvas(
     outer_text: str,
     config: GlyphForgeConfig,
 ) -> Image.Image:
+    validate_output_image_size(canvas_size)
     center_size = _profile_frame_region_size(canvas_size)
     visible_frame_max_chars_per_line = _maximized_frame_chars_per_line(
         frame_text,

@@ -220,6 +220,10 @@ may contain only whitespace, but they cannot both contain only whitespace.
 
 Invalid values return `422 Unprocessable Entity`.
 
+Generated images are limited to 2,048 px in width, 2,048 px in height, and
+4,194,304 total pixels. Requests that would exceed a limit return
+`422 Unprocessable Entity` before the output image is allocated.
+
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 ## Available Commands

@@ -2,6 +2,7 @@ from importlib.resources import files
 
 from PIL import Image, ImageDraw, ImageFont
 
+from glyph_forge.services.output_image_limits import validate_output_image_size
 from glyph_forge.services.settings import (
     DEFAULT_BACKGROUND_COLOR,
     DEFAULT_TEXT_COLOR,
@@ -57,6 +58,11 @@ def _resolve_cell_size(
     return max(font_size, max_text_width, max_text_height)
 
 
+def resolve_text_cell_size(text: str, font_size: int) -> int:
+    font = load_font(font_size)
+    return _resolve_cell_size([list(text)], font, font_size)
+
+
 def _draw_solid_text_cell(
     img: Image.Image,
     row_index: int,
@@ -101,6 +107,7 @@ def render_text_grid_image(
     column_count = max((len(row) for row in text_grid), default=0)
     font = load_font(font_size)
     cell_size = _resolve_cell_size(text_grid, font, font_size)
+    validate_output_image_size((cell_size * column_count, cell_size * row_count))
     img = Image.new(
         IMAGE_MODE_RGBA,
         (cell_size * column_count, cell_size * row_count),
