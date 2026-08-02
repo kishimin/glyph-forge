@@ -1,6 +1,14 @@
+import unicodedata
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 
 from glyph_forge.services.settings import (
     DEFAULT_FRAME_FONT_SIZE,
@@ -10,24 +18,62 @@ from glyph_forge.services.settings import (
     GlyphForgeConfig,
 )
 
-PositiveInt = Annotated[int, Field(gt=0)]
-MaxCharsPerLine = Annotated[int, Field(gt=0, le=64)]
-NonEmptyString = Annotated[str, Field(min_length=1)]
+MAX_FRAME_TEXT_LENGTH = 64
+MAX_FILL_TEXT_LENGTH = 128
+MIN_FRAME_FONT_SIZE = 8
+MAX_FRAME_FONT_SIZE = 128
+MIN_OUTPUT_FONT_SIZE = 10
+MAX_OUTPUT_FONT_SIZE = 64
+
+MaxCharsPerLine = Annotated[int, Field(gt=0, le=MAX_FRAME_TEXT_LENGTH)]
+FrameText = Annotated[str, Field(min_length=1, max_length=MAX_FRAME_TEXT_LENGTH)]
+FillText = Annotated[str, Field(min_length=1, max_length=MAX_FILL_TEXT_LENGTH)]
+FrameFontSize = Annotated[
+    int,
+    Field(ge=MIN_FRAME_FONT_SIZE, le=MAX_FRAME_FONT_SIZE),
+]
+OutputFontSize = Annotated[
+    int,
+    Field(ge=MIN_OUTPUT_FONT_SIZE, le=MAX_OUTPUT_FONT_SIZE),
+]
 RgbValue = Annotated[int, Field(ge=0, le=255)]
 RgbColor = tuple[RgbValue, RgbValue, RgbValue]
+
+
+def normalize_render_text(value: str, name: str, max_length: int) -> str:
+    normalized_value = unicodedata.normalize("NFC", value)
+    if not normalized_value.strip():
+        raise ValueError(f"{name} must contain a visible character")
+    if any(unicodedata.category(char) == "Cc" for char in normalized_value):
+        raise ValueError(f"{name} must not contain control characters")
+    if len(normalized_value) > max_length:
+        raise ValueError(f"{name} must not exceed {max_length} characters")
+    return normalized_value
 
 
 class GenerateImageRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    frame_text: NonEmptyString
-    inner_text: NonEmptyString
-    outer_text: NonEmptyString
+    frame_text: FrameText
+    inner_text: FillText
+    outer_text: FillText
     max_chars_per_line: MaxCharsPerLine = DEFAULT_MAX_CHARS_PER_LINE
-    frame_font_size: PositiveInt = DEFAULT_FRAME_FONT_SIZE
-    output_font_size: PositiveInt = DEFAULT_OUTPUT_FONT_SIZE
+    frame_font_size: FrameFontSize = DEFAULT_FRAME_FONT_SIZE
+    output_font_size: OutputFontSize = DEFAULT_OUTPUT_FONT_SIZE
     inner_color: RgbColor = DEFAULT_TEXT_COLOR
     outer_color: RgbColor = DEFAULT_TEXT_COLOR
+
+    @field_validator("frame_text", "inner_text", "outer_text", mode="before")
+    @classmethod
+    def normalize_and_validate_text(cls, value: object, info: ValidationInfo) -> object:
+        if not isinstance(value, str):
+            return value
+        max_length = (
+            MAX_FRAME_TEXT_LENGTH
+            if info.field_name == "frame_text"
+            else MAX_FILL_TEXT_LENGTH
+        )
+        return normalize_render_text(value, info.field_name, max_length)
 
     @model_validator(mode="after")
     def validate_explicit_chars_per_line(self) -> "GenerateImageRequest":

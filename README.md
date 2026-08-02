@@ -208,12 +208,12 @@ with urllib.request.urlopen(request) as response:
 
 | Field                      | Required | Default | Description                                  |
 | -------------------------- | -------- | ------- | -------------------------------------------- |
-| `frame_text`               | Yes      | -       | Text used to create the frame shape          |
-| `inner_text`               | Yes      | -       | Text rendered inside the frame               |
-| `outer_text`               | Yes      | -       | Text rendered outside the frame              |
+| `frame_text`               | Yes      | -       | Frame text, up to 64 characters              |
+| `inner_text`               | Yes      | -       | Inner text, up to 128 characters             |
+| `outer_text`               | Yes      | -       | Outer text, up to 128 characters             |
 | `max_chars_per_line`       | No       | `5`     | Frame wrapping size, up to 64 and frame length |
-| `frame_font_size`          | No       | `20`    | Font size used to create the frame mask      |
-| `output_font_size`         | No       | `20`    | Font size used for inner and outer text      |
+| `frame_font_size`          | No       | `20`    | Frame font size from 8 through 128           |
+| `output_font_size`         | No       | `20`    | Output font size from 10 through 64          |
 | `inner_color`              | No       | black   | RGB color for inner text                     |
 | `outer_color`              | No       | black   | RGB color for outer text                     |
 

@@ -4,7 +4,13 @@ from fastapi import FastAPI, HTTPException, Request, responses
 from PIL import Image
 from starlette.datastructures import UploadFile
 
-from app.schemas import GenerateImageRequest
+from app.schemas import (
+    MAX_FILL_TEXT_LENGTH,
+    MAX_OUTPUT_FONT_SIZE,
+    MIN_OUTPUT_FONT_SIZE,
+    GenerateImageRequest,
+    normalize_render_text,
+)
 from glyph_forge.services.glyph_art_renderer import (
     render_background_image,
     render_glyph_art_image,
@@ -43,10 +49,10 @@ def _form_value(form, name: str) -> str:
     value = form.get(name)
     if not isinstance(value, str) or not value:
         raise ValueError(f"{name} must not be empty")
-    return value
+    return normalize_render_text(value, name, MAX_FILL_TEXT_LENGTH)
 
 
-def _form_positive_int(form, name: str, default: int) -> int:
+def _form_output_font_size(form, name: str, default: int) -> int:
     value = form.get(name)
     if value is None or value == "":
         return default
@@ -54,8 +60,11 @@ def _form_positive_int(form, name: str, default: int) -> int:
         parsed_value = int(value)
     except ValueError as error:
         raise ValueError(f"{name} must be an integer") from error
-    if parsed_value < 1:
-        raise ValueError(f"{name} must be greater than 0")
+    if parsed_value < MIN_OUTPUT_FONT_SIZE or parsed_value > MAX_OUTPUT_FONT_SIZE:
+        raise ValueError(
+            f"{name} must be between "
+            f"{MIN_OUTPUT_FONT_SIZE} and {MAX_OUTPUT_FONT_SIZE}"
+        )
     return parsed_value
 
 
@@ -134,7 +143,7 @@ async def generate_image_from_frame_file(request: Request):
         inner_text = _form_value(form, "inner_text")
         outer_text = _form_value(form, "outer_text")
         config = GlyphForgeConfig(
-            output_font_size=_form_positive_int(
+            output_font_size=_form_output_font_size(
                 form,
                 "output_font_size",
                 DEFAULT_OUTPUT_FONT_SIZE,
