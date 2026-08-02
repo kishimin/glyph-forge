@@ -40,15 +40,28 @@ RgbValue = Annotated[int, Field(ge=0, le=255)]
 RgbColor = tuple[RgbValue, RgbValue, RgbValue]
 
 
-def normalize_render_text(value: str, name: str, max_length: int) -> str:
+def normalize_render_text(
+    value: str,
+    name: str,
+    max_length: int,
+    *,
+    allow_whitespace_only: bool = False,
+) -> str:
     normalized_value = unicodedata.normalize("NFC", value)
-    if not normalized_value.strip():
+    if not allow_whitespace_only and not normalized_value.strip():
         raise ValueError(f"{name} must contain a visible character")
     if any(unicodedata.category(char) == "Cc" for char in normalized_value):
         raise ValueError(f"{name} must not contain control characters")
     if len(normalized_value) > max_length:
         raise ValueError(f"{name} must not exceed {max_length} characters")
     return normalized_value
+
+
+def validate_fill_pair(inner_text: str, outer_text: str) -> None:
+    if not inner_text.strip() and not outer_text.strip():
+        raise ValueError(
+            "inner_text and outer_text must not both contain only whitespace"
+        )
 
 
 class GenerateImageRequest(BaseModel):
@@ -73,10 +86,16 @@ class GenerateImageRequest(BaseModel):
             if info.field_name == "frame_text"
             else MAX_FILL_TEXT_LENGTH
         )
-        return normalize_render_text(value, info.field_name, max_length)
+        return normalize_render_text(
+            value,
+            info.field_name,
+            max_length,
+            allow_whitespace_only=info.field_name != "frame_text",
+        )
 
     @model_validator(mode="after")
-    def validate_explicit_chars_per_line(self) -> "GenerateImageRequest":
+    def validate_request_relationships(self) -> "GenerateImageRequest":
+        validate_fill_pair(self.inner_text, self.outer_text)
         if (
             "max_chars_per_line" in self.model_fields_set
             and self.max_chars_per_line > len(self.frame_text)

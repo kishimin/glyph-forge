@@ -217,6 +217,9 @@ with urllib.request.urlopen(request) as response:
 | `inner_color`              | No       | black   | RGB color for inner text                     |
 | `outer_color`              | No       | black   | RGB color for outer text                     |
 
+`frame_text` must contain a visible character. `inner_text` or `outer_text`
+may contain only whitespace, but they cannot both contain only whitespace.
+
 Invalid values return `422 Unprocessable Entity`.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
