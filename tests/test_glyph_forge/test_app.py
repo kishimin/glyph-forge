@@ -135,6 +135,91 @@ def test_generate_image_from_uploaded_frame_image_rejects_invalid_file():
     assert response.status_code == 422
 
 
+def test_generate_image_from_uploaded_frame_image_rejects_file_above_size_limit():
+    client = TestClient(app)
+
+    response = client.post(
+        "/images/frame-file",
+        data={"inner_text": "x", "outer_text": "o"},
+        files={
+            "frame_image": (
+                "frame.png",
+                BytesIO(b"A" * (2 * 1024 * 1024 + 1)),
+                "image/png",
+            )
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "frame_image must not exceed 2097152 bytes"}
+
+
+@pytest.mark.parametrize("image_size", [(205, 1), (1, 205)])
+def test_generate_image_from_uploaded_frame_image_rejects_dimensions_above_limit(
+    image_size,
+):
+    client = TestClient(app)
+    upload_buffer = BytesIO()
+    Image.new("RGB", image_size, (255, 255, 255)).save(upload_buffer, format="PNG")
+    upload_buffer.seek(0)
+
+    response = client.post(
+        "/images/frame-file",
+        data={"inner_text": "x", "outer_text": "o"},
+        files={"frame_image": ("frame.png", upload_buffer, "image/png")},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": "frame_image width and height must not exceed 204 pixels"
+    }
+
+
+def test_generate_image_from_uploaded_frame_image_rejects_unsupported_actual_format():
+    client = TestClient(app)
+    upload_buffer = BytesIO()
+    Image.new("RGB", (2, 1), (255, 255, 255)).save(upload_buffer, format="BMP")
+    upload_buffer.seek(0)
+
+    response = client.post(
+        "/images/frame-file",
+        data={"inner_text": "x", "outer_text": "o"},
+        files={"frame_image": ("frame.png", upload_buffer, "image/png")},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": "frame_image format must be PNG, JPEG, or WEBP"
+    }
+
+
+def test_generate_image_from_uploaded_frame_image_rejects_animation():
+    client = TestClient(app)
+    upload_buffer = BytesIO()
+    frames = [
+        Image.new("RGB", (2, 1), (255, 255, 255)),
+        Image.new("RGB", (2, 1), (0, 0, 0)),
+    ]
+    frames[0].save(
+        upload_buffer,
+        format="PNG",
+        save_all=True,
+        append_images=frames[1:],
+        duration=100,
+        loop=0,
+    )
+    upload_buffer.seek(0)
+
+    response = client.post(
+        "/images/frame-file",
+        data={"inner_text": "x", "outer_text": "o"},
+        files={"frame_image": ("frame.png", upload_buffer, "image/png")},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "frame_image must not be animated"}
+
+
 def test_generate_image_accepts_short_frame_with_internal_wrapping():
     client = TestClient(app)
 
