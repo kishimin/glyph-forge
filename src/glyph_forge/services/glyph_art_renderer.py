@@ -12,7 +12,6 @@ from glyph_forge.services.settings import (
     DEFAULT_CANVAS_GRID_DIVISIONS,
     DEFAULT_X_ICON_SIZE,
     TRANSPARENT_BACKGROUND_COLOR,
-    UNCROPPED_FRAME_CELL_PADDING_RATIO,
     Color,
     GlyphForgeConfig,
 )
@@ -39,27 +38,6 @@ def _build_color_grid(
         ]
         for binary_row in binary_grid
     ]
-
-
-def _with_uncropped_frame(config: GlyphForgeConfig) -> GlyphForgeConfig:
-    return GlyphForgeConfig(
-        max_chars_per_line=config.max_chars_per_line,
-        frame_font_size=config.frame_font_size,
-        output_font_size=config.output_font_size,
-        frame_cell_padding_ratio=max(
-            config.frame_cell_padding_ratio,
-            UNCROPPED_FRAME_CELL_PADDING_RATIO,
-        ),
-        inner_color=config.inner_color,
-        outer_color=config.outer_color,
-        background_color=config.background_color,
-    )
-
-
-def _visible_max_chars_per_line(
-    configured_max_chars_per_line: int,
-) -> int:
-    return configured_max_chars_per_line
 
 
 def _maximized_frame_chars_per_line(
@@ -111,22 +89,6 @@ def _profile_frame_region_size(canvas_size: tuple[int, int]) -> tuple[int, int]:
     return (
         max(1, round(canvas_size[0] * PROFILE_FRAME_CANVAS_FILL_RATIO)),
         max(1, round(canvas_size[1] * PROFILE_FRAME_CANVAS_FILL_RATIO)),
-    )
-
-
-def _with_visible_layout(config: GlyphForgeConfig) -> GlyphForgeConfig:
-    safe_config = _with_uncropped_frame(config)
-    visible_max_chars_per_line = _visible_max_chars_per_line(
-        safe_config.max_chars_per_line,
-    )
-    return GlyphForgeConfig(
-        max_chars_per_line=visible_max_chars_per_line,
-        frame_font_size=safe_config.frame_font_size,
-        output_font_size=safe_config.output_font_size,
-        frame_cell_padding_ratio=safe_config.frame_cell_padding_ratio,
-        inner_color=safe_config.inner_color,
-        outer_color=safe_config.outer_color,
-        background_color=safe_config.background_color,
     )
 
 
@@ -237,7 +199,6 @@ def render_glyph_art_image(
         row_count,
         config.frame_font_size,
         background_color=config.background_color,
-        cell_padding_ratio=config.frame_cell_padding_ratio,
     )
     if max_output_size is not None:
         frame_img = _fit_frame_image_to_output_grid(
@@ -429,7 +390,7 @@ def render_x_icon_image(
         frame_text,
         inner_text,
         outer_text,
-        _with_visible_layout(config),
+        config,
         config.max_chars_per_line,
     )
 
@@ -445,6 +406,6 @@ def render_background_image(
         frame_text,
         inner_text,
         outer_text,
-        _with_visible_layout(config),
+        config,
         config.max_chars_per_line,
     )

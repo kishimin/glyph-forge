@@ -4,7 +4,6 @@ from PIL import Image, ImageDraw, ImageFont
 
 from glyph_forge.services.settings import (
     DEFAULT_BACKGROUND_COLOR,
-    DEFAULT_FRAME_CELL_PADDING_RATIO,
     DEFAULT_TEXT_COLOR,
     IMAGE_MODE_RGBA,
     Color,
@@ -45,9 +44,7 @@ def _resolve_cell_size(
     text_grid: list[list[str]],
     font: ImageFont.FreeTypeFont,
     font_size: int,
-    cell_padding_ratio: float,
 ) -> int:
-    padding = round(font_size * cell_padding_ratio)
     max_text_width = 0
     max_text_height = 0
 
@@ -57,7 +54,7 @@ def _resolve_cell_size(
             max_text_width = max(max_text_width, right - left)
             max_text_height = max(max_text_height, bottom - top)
 
-    return max(font_size, max_text_width + padding * 2, max_text_height + padding * 2)
+    return max(font_size, max_text_width, max_text_height)
 
 
 def _draw_solid_text_cell(
@@ -99,12 +96,11 @@ def render_text_grid_image(
     color_grid: list[list[Color]] | None = None,
     fill: Color = DEFAULT_TEXT_COLOR,
     background_color: Color = DEFAULT_BACKGROUND_COLOR,
-    cell_padding_ratio: float = DEFAULT_FRAME_CELL_PADDING_RATIO,
 ) -> Image.Image:
     row_count = len(text_grid)
     column_count = max((len(row) for row in text_grid), default=0)
     font = load_font(font_size)
-    cell_size = _resolve_cell_size(text_grid, font, font_size, cell_padding_ratio)
+    cell_size = _resolve_cell_size(text_grid, font, font_size)
     img = Image.new(
         IMAGE_MODE_RGBA,
         (cell_size * column_count, cell_size * row_count),
@@ -137,7 +133,6 @@ def render_text_image(
     font_size: int,
     fill: Color = DEFAULT_TEXT_COLOR,
     background_color: Color = DEFAULT_BACKGROUND_COLOR,
-    cell_padding_ratio: float = DEFAULT_FRAME_CELL_PADDING_RATIO,
 ) -> Image.Image:
     if not input_text:
         raise ValueError("input_text must not be empty")
@@ -150,5 +145,4 @@ def render_text_image(
         font_size,
         fill=fill,
         background_color=background_color,
-        cell_padding_ratio=cell_padding_ratio,
     )

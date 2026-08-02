@@ -211,10 +211,9 @@ with urllib.request.urlopen(request) as response:
 | `frame_text`               | Yes      | -       | Text used to create the frame shape          |
 | `inner_text`               | Yes      | -       | Text rendered inside the frame               |
 | `outer_text`               | Yes      | -       | Text rendered outside the frame              |
-| `max_chars_per_line`       | No       | `5`     | Frame text wrapping size                     |
+| `max_chars_per_line`       | No       | `5`     | Frame wrapping size, up to 64 and frame length |
 | `frame_font_size`          | No       | `20`    | Font size used to create the frame mask      |
 | `output_font_size`         | No       | `20`    | Font size used for inner and outer text      |
-| `frame_cell_padding_ratio` | No       | `0.0`   | Extra frame cell padding ratio               |
 | `inner_color`              | No       | black   | RGB color for inner text                     |
 | `outer_color`              | No       | black   | RGB color for outer text                     |
 
