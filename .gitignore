@@ -19,6 +19,9 @@ output/
 # input
 input/
 
+# document
+docs/
+
 # AI
 .agents/
 .codex/
