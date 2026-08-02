@@ -200,6 +200,35 @@ def test_generate_image_request_rejects_non_renderable_text(field_name, value):
 
 
 @pytest.mark.parametrize(
+    ("inner_text", "outer_text"),
+    [
+        ("   ", "."),
+        ("x", "   "),
+    ],
+)
+def test_generate_image_request_accepts_one_whitespace_only_fill(
+    inner_text, outer_text
+):
+    request = GenerateImageRequest(
+        frame_text="A",
+        inner_text=inner_text,
+        outer_text=outer_text,
+    )
+
+    assert request.inner_text == inner_text
+    assert request.outer_text == outer_text
+
+
+def test_generate_image_request_rejects_two_whitespace_only_fills():
+    with pytest.raises(ValidationError):
+        GenerateImageRequest(
+            frame_text="A",
+            inner_text="   ",
+            outer_text="   ",
+        )
+
+
+@pytest.mark.parametrize(
     ("field_name", "value"),
     [
         ("frame_font_size", 7),
@@ -342,6 +371,51 @@ def test_generate_image_from_frame_file_enforces_public_input_limits(
     response = client.post(
         "/images/frame-file",
         data=form_data,
+        files={"frame_image": ("frame.png", upload_buffer, "image/png")},
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("inner_text", "outer_text"),
+    [
+        ("   ", "."),
+        ("x", "   "),
+    ],
+)
+def test_generate_image_from_frame_file_accepts_one_whitespace_only_fill(
+    inner_text, outer_text
+):
+    client = TestClient(app)
+    upload_buffer = BytesIO()
+    Image.new("RGB", (2, 1), (255, 255, 255)).save(upload_buffer, format="PNG")
+    upload_buffer.seek(0)
+
+    response = client.post(
+        "/images/frame-file",
+        data={
+            "inner_text": inner_text,
+            "outer_text": outer_text,
+        },
+        files={"frame_image": ("frame.png", upload_buffer, "image/png")},
+    )
+
+    assert response.status_code == 200
+
+
+def test_generate_image_from_frame_file_rejects_two_whitespace_only_fills():
+    client = TestClient(app)
+    upload_buffer = BytesIO()
+    Image.new("RGB", (2, 1), (255, 255, 255)).save(upload_buffer, format="PNG")
+    upload_buffer.seek(0)
+
+    response = client.post(
+        "/images/frame-file",
+        data={
+            "inner_text": "   ",
+            "outer_text": "   ",
+        },
         files={"frame_image": ("frame.png", upload_buffer, "image/png")},
     )
 
