@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from app.main import app
+from app.schemas import GenerateImageRequest
 
 
 def test_health_returns_ok_for_monitoring():
@@ -131,6 +132,49 @@ def test_generate_image_rejects_non_positive_options():
     assert response.status_code == 422
 
 
+def test_generate_image_request_accepts_64_chars_per_line():
+    request = GenerateImageRequest(
+        frame_text="A" * 64,
+        inner_text="x",
+        outer_text=".",
+        max_chars_per_line=64,
+    )
+
+    assert request.max_chars_per_line == 64
+
+
+def test_generate_image_rejects_chars_per_line_above_frame_text_length():
+    client = TestClient(app)
+
+    response = client.post(
+        "/images",
+        json={
+            "frame_text": "A",
+            "inner_text": "x",
+            "outer_text": ".",
+            "max_chars_per_line": 2,
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_generate_image_rejects_more_than_64_chars_per_line():
+    client = TestClient(app)
+
+    response = client.post(
+        "/images",
+        json={
+            "frame_text": "A" * 65,
+            "inner_text": "x",
+            "outer_text": ".",
+            "max_chars_per_line": 65,
+        },
+    )
+
+    assert response.status_code == 422
+
+
 def test_generate_image_rejects_legacy_frame_fields():
     client = TestClient(app)
 
@@ -142,6 +186,22 @@ def test_generate_image_rejects_legacy_frame_fields():
             "outer_text": ".",
             "frame_columns": 1,
             "frame_rows": 1,
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_generate_image_rejects_frame_cell_padding_ratio():
+    client = TestClient(app)
+
+    response = client.post(
+        "/images",
+        json={
+            "frame_text": "A",
+            "inner_text": "x",
+            "outer_text": ".",
+            "frame_cell_padding_ratio": 0.2,
         },
     )
 
