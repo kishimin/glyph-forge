@@ -1,4 +1,5 @@
 import pytest
+from PIL import Image
 
 from glyph_forge.services.glyph_art_renderer import (
     _fit_image_on_canvas,
@@ -21,7 +22,7 @@ from glyph_forge.services.settings import (
 
 def _sample_config() -> GlyphForgeConfig:
     return GlyphForgeConfig(
-        frame_font_size=40,
+        frame_font_size=20,
         output_font_size=18,
         inner_color=(255, 183, 197),
         outer_color=(255, 0, 0),
@@ -397,6 +398,67 @@ def test_render_glyph_art_image_wraps_frame_text_at_five_characters():
     assert six_chars.height > five_chars.height
 
 
+def test_render_glyph_art_image_accepts_output_at_size_limit(monkeypatch):
+    monkeypatch.setattr(
+        "glyph_forge.services.glyph_art_renderer.render_text_image",
+        lambda *args, **kwargs: Image.new("RGB", (32, 1), (255, 255, 255)),
+    )
+
+    img = render_glyph_art_image(
+        "A",
+        "x",
+        "o",
+        config=GlyphForgeConfig(output_font_size=64),
+    )
+
+    assert img.size == (2048, 64)
+
+
+def test_render_glyph_art_image_rejects_output_above_size_limit_before_grid(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "glyph_forge.services.glyph_art_renderer.render_text_image",
+        lambda *args, **kwargs: Image.new("RGB", (33, 1), (255, 255, 255)),
+    )
+    monkeypatch.setattr(
+        "glyph_forge.services.glyph_art_renderer._frame_image_to_binary_grid",
+        lambda img: pytest.fail("output size must be validated before grid creation"),
+    )
+
+    with pytest.raises(ValueError, match="output image width must not exceed 2048"):
+        render_glyph_art_image(
+            "A",
+            "x",
+            "o",
+            config=GlyphForgeConfig(output_font_size=64),
+        )
+
+
+def test_render_image_frame_art_image_rejects_output_above_size_limit():
+    frame_img = Image.new("RGB", (33, 1), (255, 255, 255))
+
+    with pytest.raises(ValueError, match="output image width must not exceed 2048"):
+        render_image_frame_art_image(
+            frame_img,
+            "x",
+            "o",
+            config=GlyphForgeConfig(output_font_size=64),
+        )
+
+
+def test_render_image_frame_art_image_rejects_output_above_height_limit():
+    frame_img = Image.new("RGB", (1, 33), (255, 255, 255))
+
+    with pytest.raises(ValueError, match="output image height must not exceed 2048"):
+        render_image_frame_art_image(
+            frame_img,
+            "x",
+            "o",
+            config=GlyphForgeConfig(output_font_size=64),
+        )
+
+
 def test_render_x_icon_image_fills_margin_with_outer_text():
     img = render_x_icon_image(
         "FRAME_TEXT_SAMPLE", "INNER_TEXT_SAMPLE", "OUTER_TEXT_SAMPLE", _sample_config()
@@ -435,9 +497,9 @@ def test_render_glyph_art_image_keeps_outer_text_visible_on_background():
 def test_fit_image_on_canvas_keeps_outer_text_font_size_constant(monkeypatch):
     captured_font_sizes = []
     source_img = render_glyph_art_image(
-        "FRAME_TEXT_SAMPLE",
-        "INNER_TEXT_SAMPLE",
-        "OUTER_TEXT_SAMPLE",
+        "A",
+        "x",
+        "o",
         config=GlyphForgeConfig(
             frame_font_size=40,
             output_font_size=40,

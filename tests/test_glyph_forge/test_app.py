@@ -39,6 +39,24 @@ def test_generate_image_accepts_compact_request():
     assert response.content.startswith(b"\x89PNG")
 
 
+def test_generate_image_rejects_output_above_size_limit():
+    client = TestClient(app)
+
+    response = client.post(
+        "/images",
+        json={
+            "frame_text": "ABCDE",
+            "inner_text": "x",
+            "outer_text": "o",
+            "frame_font_size": 128,
+            "output_font_size": 64,
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "output image width must not exceed 2048"}
+
+
 def test_generate_x_icon_image_returns_png():
     client = TestClient(app)
 
