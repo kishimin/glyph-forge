@@ -4,6 +4,16 @@ from fastapi import FastAPI, HTTPException, Request, responses
 from PIL import Image
 from starlette.datastructures import UploadFile
 
+from app.request_limits import (
+    IMAGE_REQUEST_QUEUE_TIMEOUT_SECONDS,
+    MAX_CONCURRENT_IMAGE_REQUESTS,
+    MAX_WAITING_IMAGE_REQUESTS,
+    RATE_LIMIT_BURST_SIZE,
+    RATE_LIMIT_REQUESTS_PER_MINUTE,
+    ConcurrentRequestLimiter,
+    ImageRequestLimitsMiddleware,
+    TokenBucketRateLimiter,
+)
 from app.schemas import (
     MAX_FILL_TEXT_LENGTH,
     MAX_OUTPUT_FONT_SIZE,
@@ -26,6 +36,20 @@ from glyph_forge.services.settings import (
 )
 
 app = FastAPI()
+app.state.image_rate_limiter = TokenBucketRateLimiter(
+    requests_per_minute=RATE_LIMIT_REQUESTS_PER_MINUTE,
+    burst_size=RATE_LIMIT_BURST_SIZE,
+)
+app.state.image_concurrency_limiter = ConcurrentRequestLimiter(
+    max_concurrent=MAX_CONCURRENT_IMAGE_REQUESTS,
+    max_waiting=MAX_WAITING_IMAGE_REQUESTS,
+    wait_timeout_seconds=IMAGE_REQUEST_QUEUE_TIMEOUT_SECONDS,
+)
+app.add_middleware(
+    ImageRequestLimitsMiddleware,
+    rate_limiter=app.state.image_rate_limiter,
+    concurrent_limiter=app.state.image_concurrency_limiter,
+)
 
 
 @app.get("/health")
