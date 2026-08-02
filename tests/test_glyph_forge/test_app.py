@@ -6,7 +6,15 @@ from PIL import Image
 from pydantic import ValidationError
 
 from app.main import app
+from app.request_limits import RequestQueueFull
 from app.schemas import GenerateImageRequest
+
+
+@pytest.fixture(autouse=True)
+def reset_image_rate_limiter():
+    limiter = getattr(app.state, "image_rate_limiter", None)
+    if limiter is not None:
+        limiter.reset()
 
 
 def test_health_returns_ok_for_monitoring():
@@ -37,6 +45,55 @@ def test_generate_image_accepts_compact_request():
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/png"
     assert response.content.startswith(b"\x89PNG")
+
+
+def test_generate_image_rate_limit_returns_retry_after_and_exempts_health():
+    client = TestClient(app)
+    request_body = {
+        "frame_text": "A",
+        "inner_text": "x",
+        "outer_text": "o",
+        "frame_font_size": 8,
+        "output_font_size": 10,
+    }
+
+    accepted_responses = [client.post("/images", json=request_body) for _ in range(3)]
+    limited_response = client.post("/images", json=request_body)
+    health_response = client.get("/health")
+
+    assert all(response.status_code == 200 for response in accepted_responses)
+    assert limited_response.status_code == 429
+    assert limited_response.headers["retry-after"] == "6"
+    assert limited_response.json() == {"detail": "image generation rate limit exceeded"}
+    assert health_response.status_code == 200
+
+
+def test_generate_image_capacity_limit_returns_retry_after(monkeypatch):
+    client = TestClient(app)
+
+    async def reject_request():
+        raise RequestQueueFull
+
+    monkeypatch.setattr(
+        app.state.image_concurrency_limiter,
+        "acquire",
+        reject_request,
+    )
+
+    response = client.post(
+        "/images",
+        json={
+            "frame_text": "A",
+            "inner_text": "x",
+            "outer_text": "o",
+        },
+    )
+
+    assert response.status_code == 503
+    assert response.headers["retry-after"] == "1"
+    assert response.json() == {
+        "detail": "image generation capacity is temporarily unavailable"
+    }
 
 
 def test_generate_image_rejects_output_above_size_limit():
