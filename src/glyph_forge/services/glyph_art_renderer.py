@@ -25,6 +25,7 @@ from glyph_forge.services.text_image_renderer import (
 VISIBLE_FRAME_TEXT_LINE_SPACING_RATIO = 1.1
 VISIBLE_FRAME_MASK_FILTER_SIZE = 17
 PROFILE_FRAME_CANVAS_FILL_RATIO = 1.0
+GENERAL_FRAME_CHARS_PER_LINE = 5
 
 
 def _build_color_grid(
@@ -42,13 +43,12 @@ def _build_color_grid(
 
 def _maximized_frame_chars_per_line(
     frame_text: str,
-    configured_max_chars_per_line: int,
     canvas_size: tuple[int, int],
 ) -> int:
     if not frame_text:
         raise ValueError("frame_text must not be empty")
 
-    best_chars_per_line = max(1, min(configured_max_chars_per_line, len(frame_text)))
+    best_chars_per_line = 1
     best_font_size = 0
     for chars_per_line in range(1, len(frame_text) + 1):
         text_lines = split_text_lines(frame_text, chars_per_line)
@@ -189,7 +189,8 @@ def render_glyph_art_image(
     if config is None:
         config = GlyphForgeConfig()
 
-    text_lines = split_text_lines(frame_text, config.max_chars_per_line)
+    chars_per_line = min(GENERAL_FRAME_CHARS_PER_LINE, len(frame_text))
+    text_lines = split_text_lines(frame_text, chars_per_line)
     column_count = max(len(line) for line in text_lines)
     row_count = len(text_lines)
 
@@ -278,12 +279,10 @@ def _render_profile_canvas(
     inner_text: str,
     outer_text: str,
     config: GlyphForgeConfig,
-    frame_max_chars_per_line: int,
 ) -> Image.Image:
     center_size = _profile_frame_region_size(canvas_size)
     visible_frame_max_chars_per_line = _maximized_frame_chars_per_line(
         frame_text,
-        frame_max_chars_per_line,
         center_size,
     )
     center_mask = _render_center_frame_mask(
@@ -391,7 +390,6 @@ def render_x_icon_image(
         inner_text,
         outer_text,
         config,
-        config.max_chars_per_line,
     )
 
 
@@ -407,5 +405,4 @@ def render_background_image(
         inner_text,
         outer_text,
         config,
-        config.max_chars_per_line,
     )

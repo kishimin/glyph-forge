@@ -12,7 +12,6 @@ from pydantic import (
 
 from glyph_forge.services.settings import (
     DEFAULT_FRAME_FONT_SIZE,
-    DEFAULT_MAX_CHARS_PER_LINE,
     DEFAULT_OUTPUT_FONT_SIZE,
     DEFAULT_TEXT_COLOR,
     GlyphForgeConfig,
@@ -25,7 +24,6 @@ MAX_FRAME_FONT_SIZE = 128
 MIN_OUTPUT_FONT_SIZE = 10
 MAX_OUTPUT_FONT_SIZE = 64
 
-MaxCharsPerLine = Annotated[int, Field(gt=0, le=MAX_FRAME_TEXT_LENGTH)]
 FrameText = Annotated[str, Field(min_length=1, max_length=MAX_FRAME_TEXT_LENGTH)]
 FillText = Annotated[str, Field(min_length=1, max_length=MAX_FILL_TEXT_LENGTH)]
 FrameFontSize = Annotated[
@@ -70,7 +68,6 @@ class GenerateImageRequest(BaseModel):
     frame_text: FrameText
     inner_text: FillText
     outer_text: FillText
-    max_chars_per_line: MaxCharsPerLine = DEFAULT_MAX_CHARS_PER_LINE
     frame_font_size: FrameFontSize = DEFAULT_FRAME_FONT_SIZE
     output_font_size: OutputFontSize = DEFAULT_OUTPUT_FONT_SIZE
     inner_color: RgbColor = DEFAULT_TEXT_COLOR
@@ -96,16 +93,10 @@ class GenerateImageRequest(BaseModel):
     @model_validator(mode="after")
     def validate_request_relationships(self) -> "GenerateImageRequest":
         validate_fill_pair(self.inner_text, self.outer_text)
-        if (
-            "max_chars_per_line" in self.model_fields_set
-            and self.max_chars_per_line > len(self.frame_text)
-        ):
-            raise ValueError("max_chars_per_line must not exceed frame_text length")
         return self
 
     def to_config(self) -> GlyphForgeConfig:
         return GlyphForgeConfig(
-            max_chars_per_line=min(self.max_chars_per_line, len(self.frame_text)),
             frame_font_size=self.frame_font_size,
             output_font_size=self.output_font_size,
             inner_color=self.inner_color,

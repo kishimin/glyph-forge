@@ -178,7 +178,6 @@ payload = {
     "outer_text": "OUTER",
     "inner_color": [64, 128, 255],
     "outer_color": [255, 128, 64],
-    "max_chars_per_line": 5,
 }
 
 request = urllib.request.Request(
@@ -211,7 +210,6 @@ with urllib.request.urlopen(request) as response:
 | `frame_text`               | Yes      | -       | Frame text, up to 64 characters              |
 | `inner_text`               | Yes      | -       | Inner text, up to 128 characters             |
 | `outer_text`               | Yes      | -       | Outer text, up to 128 characters             |
-| `max_chars_per_line`       | No       | `5`     | Frame wrapping size, up to 64 and frame length |
 | `frame_font_size`          | No       | `20`    | Frame font size from 8 through 128           |
 | `output_font_size`         | No       | `20`    | Output font size from 10 through 64          |
 | `inner_color`              | No       | black   | RGB color for inner text                     |
