@@ -9,7 +9,7 @@ import anyio
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
-from starlette.types import ASGIApp
+from starlette.types import ASGIApp, Message
 
 IMAGE_GENERATION_PATHS = frozenset(
     {
@@ -25,6 +25,7 @@ RATE_LIMIT_MAX_CLIENTS = 10_000
 MAX_CONCURRENT_IMAGE_REQUESTS = 1
 MAX_WAITING_IMAGE_REQUESTS = 4
 IMAGE_REQUEST_QUEUE_TIMEOUT_SECONDS = 10.0
+IMAGE_GENERATION_TIMEOUT_SECONDS = 30.0
 
 
 @dataclass
@@ -85,6 +86,35 @@ class RequestQueueFull(Exception):
 
 class RequestQueueTimeout(Exception):
     pass
+
+
+class RequestBodyTooLarge(Exception):
+    pass
+
+
+def image_generation_capacity_response() -> JSONResponse:
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "image generation capacity is temporarily unavailable"},
+        headers={"Retry-After": "1"},
+    )
+
+
+def request_with_body_limit(request: Request, max_bytes: int) -> Request:
+    received_bytes = 0
+
+    async def receive() -> Message:
+        nonlocal received_bytes
+        message = await request.receive()
+        if message["type"] == "http.request":
+            received_bytes += len(message.get("body", b""))
+            # Content-Length can be absent or dishonest, so enforce the limit on
+            # actual ASGI bytes before the multipart parser receives each chunk.
+            if received_bytes > max_bytes:
+                raise RequestBodyTooLarge
+        return message
+
+    return Request(request.scope, receive=receive)
 
 
 class ConcurrentRequestLimiter:
@@ -159,13 +189,7 @@ class ImageRequestLimitsMiddleware(BaseHTTPMiddleware):
         try:
             await self._concurrent_limiter.acquire()
         except (RequestQueueFull, RequestQueueTimeout):
-            return JSONResponse(
-                status_code=503,
-                content={
-                    "detail": "image generation capacity is temporarily unavailable"
-                },
-                headers={"Retry-After": "1"},
-            )
+            return image_generation_capacity_response()
 
         try:
             return await call_next(request)

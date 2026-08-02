@@ -32,7 +32,7 @@ def _validate_image_metadata(img: Image.Image) -> None:
         )
 
 
-def _decode_image(image_bytes: bytes) -> Image.Image:
+def decode_uploaded_image(image_bytes: bytes) -> Image.Image:
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", Image.DecompressionBombWarning)
@@ -49,10 +49,15 @@ def _decode_image(image_bytes: bytes) -> Image.Image:
         raise ValueError("frame_image must be a valid image") from error
 
 
-async def load_uploaded_image(frame_image: UploadFile) -> Image.Image:
+async def read_uploaded_image_bytes(frame_image: UploadFile) -> bytes:
     image_bytes = await frame_image.read(MAX_UPLOADED_IMAGE_BYTES + 1)
     if len(image_bytes) > MAX_UPLOADED_IMAGE_BYTES:
         raise ValueError(
             f"frame_image must not exceed {MAX_UPLOADED_IMAGE_BYTES} bytes"
         )
-    return _decode_image(image_bytes)
+    return image_bytes
+
+
+async def load_uploaded_image(frame_image: UploadFile) -> Image.Image:
+    image_bytes = await read_uploaded_image_bytes(frame_image)
+    return decode_uploaded_image(image_bytes)

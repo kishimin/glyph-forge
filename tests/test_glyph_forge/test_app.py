@@ -1,13 +1,22 @@
+import time
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
+from threading import Event
 
 import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 from pydantic import ValidationError
 
+import app.main as main_module
 from app.main import app
 from app.request_limits import RequestQueueFull
 from app.schemas import GenerateImageRequest
+
+
+def _slow_image_renderer(*args, **kwargs):
+    time.sleep(2)
+    return Image.new("RGB", (1, 1), (255, 255, 255))
 
 
 @pytest.fixture(autouse=True)
@@ -96,6 +105,43 @@ def test_generate_image_capacity_limit_returns_retry_after(monkeypatch):
     }
 
 
+def test_generation_timeout_releases_capacity_for_next_request(monkeypatch):
+    client = TestClient(app)
+    original_renderer = main_module.render_glyph_art_image
+    request_body = {
+        "frame_text": "A",
+        "inner_text": "x",
+        "outer_text": "o",
+    }
+    monkeypatch.setattr(
+        app.state,
+        "image_generation_timeout_seconds",
+        0.5,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        main_module,
+        "render_glyph_art_image",
+        _slow_image_renderer,
+    )
+
+    timed_out_response = client.post("/images", json=request_body)
+    monkeypatch.setattr(
+        main_module,
+        "render_glyph_art_image",
+        original_renderer,
+    )
+    monkeypatch.setattr(app.state, "image_generation_timeout_seconds", 2.0)
+    next_response = client.post("/images", json=request_body)
+
+    assert timed_out_response.status_code == 503
+    assert timed_out_response.headers["retry-after"] == "1"
+    assert timed_out_response.json() == {
+        "detail": "image generation capacity is temporarily unavailable"
+    }
+    assert next_response.status_code == 200
+
+
 def test_generate_image_rejects_output_above_size_limit():
     client = TestClient(app)
 
@@ -177,6 +223,56 @@ def test_generate_image_from_uploaded_frame_image_returns_png():
     assert response.content.startswith(b"\x89PNG")
 
 
+def test_health_responds_while_uploaded_frame_image_is_rendering(monkeypatch):
+    render_started = Event()
+    release_render = Event()
+    health_finished = Event()
+
+    def blocking_worker(*args, **kwargs):
+        render_started.set()
+        release_render.wait(timeout=2)
+        image_buffer = BytesIO()
+        Image.new("RGB", (1, 1), (255, 255, 255)).save(
+            image_buffer,
+            format="PNG",
+        )
+        return image_buffer.getvalue()
+
+    def get_health(client):
+        response = client.get("/health")
+        health_finished.set()
+        return response
+
+    monkeypatch.setattr(
+        main_module,
+        "run_image_generation_in_process",
+        blocking_worker,
+    )
+    upload_buffer = BytesIO()
+    Image.new("RGB", (2, 1), (255, 255, 255)).save(upload_buffer, format="PNG")
+    upload_buffer.seek(0)
+
+    with TestClient(app) as client, ThreadPoolExecutor(max_workers=2) as executor:
+        upload_future = executor.submit(
+            client.post,
+            "/images/frame-file",
+            data={"inner_text": "x", "outer_text": "o"},
+            files={"frame_image": ("frame.png", upload_buffer, "image/png")},
+        )
+        assert render_started.wait(timeout=1)
+        health_future = executor.submit(get_health, client)
+
+        health_responded_before_render_finished = health_finished.wait(timeout=1)
+        release_render.set()
+        upload_response = upload_future.result(timeout=2)
+        health_response = health_future.result(timeout=2)
+
+    assert health_responded_before_render_finished
+    assert health_response.status_code == 200
+    assert health_response.json() == {"status": "ok"}
+    assert upload_response.status_code == 200
+
+
 def test_generate_image_from_uploaded_frame_image_rejects_invalid_file():
     client = TestClient(app)
 
@@ -209,6 +305,47 @@ def test_generate_image_from_uploaded_frame_image_rejects_file_above_size_limit(
 
     assert response.status_code == 422
     assert response.json() == {"detail": "frame_image must not exceed 2097152 bytes"}
+
+
+def test_generate_image_from_frame_file_rejects_oversized_multipart_body():
+    client = TestClient(app)
+    max_request_bytes = 2 * 1024 * 1024 + 64 * 1024
+
+    response = client.post(
+        "/images/frame-file",
+        data={"inner_text": "x", "outer_text": "o"},
+        files={
+            "frame_image": (
+                "frame.png",
+                BytesIO(b"A" * (max_request_bytes + 1)),
+                "image/png",
+            )
+        },
+    )
+
+    assert response.status_code == 413
+    assert response.json() == {"detail": "request body is too large"}
+
+
+def test_generate_image_from_frame_file_rejects_additional_file_part():
+    client = TestClient(app)
+    upload_buffer = BytesIO()
+    Image.new("RGB", (2, 1), (255, 255, 255)).save(upload_buffer, format="PNG")
+    upload_buffer.seek(0)
+
+    response = client.post(
+        "/images/frame-file",
+        data={"inner_text": "x", "outer_text": "o"},
+        files=[
+            ("frame_image", ("frame.png", upload_buffer, "image/png")),
+            ("extra_file", ("extra.png", BytesIO(b"A"), "image/png")),
+        ],
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": "Too many files. Maximum number of files is 1."
+    }
 
 
 @pytest.mark.parametrize("image_size", [(205, 1), (1, 205)])

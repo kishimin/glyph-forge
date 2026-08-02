@@ -1,10 +1,17 @@
 from io import BytesIO
 
+import anyio
 from fastapi import FastAPI, HTTPException, Request, responses
 from PIL import Image
 from starlette.datastructures import UploadFile
 
+from app.image_worker import (
+    ImageGenerationTimeout,
+    ImageGenerationValueError,
+    run_image_generation_in_process,
+)
 from app.request_limits import (
+    IMAGE_GENERATION_TIMEOUT_SECONDS,
     IMAGE_REQUEST_QUEUE_TIMEOUT_SECONDS,
     MAX_CONCURRENT_IMAGE_REQUESTS,
     MAX_WAITING_IMAGE_REQUESTS,
@@ -12,7 +19,10 @@ from app.request_limits import (
     RATE_LIMIT_REQUESTS_PER_MINUTE,
     ConcurrentRequestLimiter,
     ImageRequestLimitsMiddleware,
+    RequestBodyTooLarge,
     TokenBucketRateLimiter,
+    image_generation_capacity_response,
+    request_with_body_limit,
 )
 from app.schemas import (
     MAX_FILL_TEXT_LENGTH,
@@ -22,7 +32,11 @@ from app.schemas import (
     normalize_render_text,
     validate_fill_pair,
 )
-from app.uploaded_image import load_uploaded_image
+from app.uploaded_image import (
+    MAX_UPLOADED_IMAGE_BYTES,
+    decode_uploaded_image,
+    read_uploaded_image_bytes,
+)
 from glyph_forge.services.glyph_art_renderer import (
     render_background_image,
     render_glyph_art_image,
@@ -45,11 +59,17 @@ app.state.image_concurrency_limiter = ConcurrentRequestLimiter(
     max_waiting=MAX_WAITING_IMAGE_REQUESTS,
     wait_timeout_seconds=IMAGE_REQUEST_QUEUE_TIMEOUT_SECONDS,
 )
+app.state.image_generation_timeout_seconds = IMAGE_GENERATION_TIMEOUT_SECONDS
 app.add_middleware(
     ImageRequestLimitsMiddleware,
     rate_limiter=app.state.image_rate_limiter,
     concurrent_limiter=app.state.image_concurrency_limiter,
 )
+
+# Existing text fields are tightly bounded; 64 KiB leaves room for their multipart
+# headers while keeping the complete request close to the accepted 2 MiB image.
+MULTIPART_OVERHEAD_BYTES = 64 * 1024
+MAX_FRAME_FILE_REQUEST_BYTES = MAX_UPLOADED_IMAGE_BYTES + MULTIPART_OVERHEAD_BYTES
 
 
 @app.get("/health")
@@ -57,18 +77,24 @@ def health():
     return {"status": "ok"}
 
 
-def _png_response(img: Image.Image) -> responses.StreamingResponse:
-    buffer = BytesIO()
-    img.save(buffer, format="PNG")
-    buffer.seek(0)
-    return responses.StreamingResponse(buffer, media_type="image/png")
+def _png_response(image_bytes: bytes) -> responses.StreamingResponse:
+    return responses.StreamingResponse(BytesIO(image_bytes), media_type="image/png")
 
 
-def _render_or_422(render_image) -> responses.StreamingResponse:
+async def _run_image_generation(render_image, *args, **kwargs):
     try:
-        return _png_response(render_image())
-    except ValueError as error:
+        image_bytes = await anyio.to_thread.run_sync(
+            run_image_generation_in_process,
+            render_image,
+            args,
+            kwargs,
+            app.state.image_generation_timeout_seconds,
+        )
+    except ImageGenerationTimeout:
+        return image_generation_capacity_response()
+    except ImageGenerationValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+    return _png_response(image_bytes)
 
 
 def _form_value(form, name: str) -> str:
@@ -117,54 +143,70 @@ def _form_rgb_color(form, name: str):
     return color
 
 
-async def _uploaded_image(form) -> Image.Image:
+async def _uploaded_image_bytes(form) -> bytes:
     frame_image = form.get("frame_image")
     if not isinstance(frame_image, UploadFile):
         raise ValueError("frame_image must be uploaded")
-    return await load_uploaded_image(frame_image)
+    return await read_uploaded_image_bytes(frame_image)
+
+
+def _render_uploaded_frame_image(
+    image_bytes: bytes,
+    inner_text: str,
+    outer_text: str,
+    config: GlyphForgeConfig,
+) -> Image.Image:
+    frame_img = decode_uploaded_image(image_bytes)
+    return render_image_frame_art_image(
+        frame_img,
+        inner_text,
+        outer_text,
+        config=config,
+    )
 
 
 @app.post("/images")
-def generate_image(generate_image_request: GenerateImageRequest):
-    return _render_or_422(
-        lambda: render_glyph_art_image(
-            frame_text=generate_image_request.frame_text,
-            inner_text=generate_image_request.inner_text,
-            outer_text=generate_image_request.outer_text,
-            config=generate_image_request.to_config(),
-        )
+async def generate_image(generate_image_request: GenerateImageRequest):
+    return await _run_image_generation(
+        render_glyph_art_image,
+        generate_image_request.frame_text,
+        generate_image_request.inner_text,
+        generate_image_request.outer_text,
+        config=generate_image_request.to_config(),
     )
 
 
 @app.post("/images/x-icon")
-def generate_x_icon_image(generate_image_request: GenerateImageRequest):
-    return _render_or_422(
-        lambda: render_x_icon_image(
-            frame_text=generate_image_request.frame_text,
-            inner_text=generate_image_request.inner_text,
-            outer_text=generate_image_request.outer_text,
-            config=generate_image_request.to_config(),
-        )
+async def generate_x_icon_image(generate_image_request: GenerateImageRequest):
+    return await _run_image_generation(
+        render_x_icon_image,
+        generate_image_request.frame_text,
+        generate_image_request.inner_text,
+        generate_image_request.outer_text,
+        config=generate_image_request.to_config(),
     )
 
 
 @app.post("/images/background")
-def generate_background_image(generate_image_request: GenerateImageRequest):
-    return _render_or_422(
-        lambda: render_background_image(
-            frame_text=generate_image_request.frame_text,
-            inner_text=generate_image_request.inner_text,
-            outer_text=generate_image_request.outer_text,
-            config=generate_image_request.to_config(),
-        )
+async def generate_background_image(generate_image_request: GenerateImageRequest):
+    return await _run_image_generation(
+        render_background_image,
+        generate_image_request.frame_text,
+        generate_image_request.inner_text,
+        generate_image_request.outer_text,
+        config=generate_image_request.to_config(),
     )
 
 
 @app.post("/images/frame-file")
 async def generate_image_from_frame_file(request: Request):
     try:
-        form = await request.form()
-        frame_img = await _uploaded_image(form)
+        limited_request = request_with_body_limit(
+            request,
+            MAX_FRAME_FILE_REQUEST_BYTES,
+        )
+        form = await limited_request.form(max_files=1, max_fields=5)
+        image_bytes = await _uploaded_image_bytes(form)
         inner_text = _form_value(form, "inner_text")
         outer_text = _form_value(form, "outer_text")
         validate_fill_pair(inner_text, outer_text)
@@ -177,13 +219,17 @@ async def generate_image_from_frame_file(request: Request):
             inner_color=_form_rgb_color(form, "inner_color"),
             outer_color=_form_rgb_color(form, "outer_color"),
         )
-        return _png_response(
-            render_image_frame_art_image(
-                frame_img,
-                inner_text,
-                outer_text,
-                config=config,
-            )
+        return await _run_image_generation(
+            _render_uploaded_frame_image,
+            image_bytes,
+            inner_text,
+            outer_text,
+            config,
         )
+    except RequestBodyTooLarge as error:
+        raise HTTPException(
+            status_code=413,
+            detail="request body is too large",
+        ) from error
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
