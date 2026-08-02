@@ -12,6 +12,7 @@ from app.schemas import (
     normalize_render_text,
     validate_fill_pair,
 )
+from app.uploaded_image import load_uploaded_image
 from glyph_forge.services.glyph_art_renderer import (
     render_background_image,
     render_glyph_art_image,
@@ -96,13 +97,7 @@ async def _uploaded_image(form) -> Image.Image:
     frame_image = form.get("frame_image")
     if not isinstance(frame_image, UploadFile):
         raise ValueError("frame_image must be uploaded")
-    try:
-        image_bytes = await frame_image.read()
-        img = Image.open(BytesIO(image_bytes))
-        img.load()
-    except Exception as error:
-        raise ValueError("frame_image must be a valid image") from error
-    return img
+    return await load_uploaded_image(frame_image)
 
 
 @app.post("/images")

@@ -224,6 +224,10 @@ Generated images are limited to 2,048 px in width, 2,048 px in height, and
 4,194,304 total pixels. Requests that would exceed a limit return
 `422 Unprocessable Entity` before the output image is allocated.
 
+Uploaded frame images are limited to 2 MiB, 204 px in width and height, and
+41,616 total pixels. PNG, JPEG, and WebP are accepted; animated images are
+rejected. Limits and the actual image format are checked before decoding.
+
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 ## Available Commands
