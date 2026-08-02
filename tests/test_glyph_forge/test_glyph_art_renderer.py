@@ -21,7 +21,6 @@ from glyph_forge.services.settings import (
 
 def _sample_config() -> GlyphForgeConfig:
     return GlyphForgeConfig(
-        max_chars_per_line=5,
         frame_font_size=40,
         output_font_size=18,
         inner_color=(255, 183, 197),
@@ -60,7 +59,6 @@ def test_render_glyph_art_image_can_color_inner_and_outer_text_separately():
         "x",
         ".",
         config=GlyphForgeConfig(
-            max_chars_per_line=1,
             frame_font_size=40,
             output_font_size=24,
             inner_color=(255, 0, 0),
@@ -83,7 +81,6 @@ def test_render_x_icon_image_does_not_mix_outer_color_into_inner_text():
         "INNER_TEXT_SAMPLE",
         "OUTER_TEXT_SAMPLE",
         GlyphForgeConfig(
-            max_chars_per_line=5,
             frame_font_size=40,
             output_font_size=24,
             inner_color=(255, 0, 0),
@@ -168,7 +165,6 @@ def test_render_background_image_uses_configured_profile_text_size(monkeypatch):
         "x",
         "o",
         GlyphForgeConfig(
-            max_chars_per_line=5,
             frame_font_size=40,
             output_font_size=22,
             inner_color=(255, 183, 197),
@@ -367,8 +363,8 @@ def test_render_background_image_uses_configured_background_color():
 
 
 def test_frame_layout_uses_canvas_ratio_to_maximize_text_size():
-    wide_chars = _maximized_frame_chars_per_line("ABCDEFGHIJKL", 5, (1000, 300))
-    square_chars = _maximized_frame_chars_per_line("ABCDEFGHIJKL", 5, (300, 300))
+    wide_chars = _maximized_frame_chars_per_line("ABCDEFGHIJKL", (1000, 300))
+    square_chars = _maximized_frame_chars_per_line("ABCDEFGHIJKL", (300, 300))
 
     assert wide_chars > 5
     assert square_chars < wide_chars
@@ -380,7 +376,6 @@ def test_render_glyph_art_image_wraps_frame_text_at_five_characters():
         "x",
         "o",
         config=GlyphForgeConfig(
-            max_chars_per_line=5,
             frame_font_size=20,
             output_font_size=10,
             inner_color=(255, 183, 197),
@@ -392,7 +387,6 @@ def test_render_glyph_art_image_wraps_frame_text_at_five_characters():
         "x",
         "o",
         config=GlyphForgeConfig(
-            max_chars_per_line=5,
             frame_font_size=20,
             output_font_size=10,
             inner_color=(255, 183, 197),
@@ -445,7 +439,6 @@ def test_fit_image_on_canvas_keeps_outer_text_font_size_constant(monkeypatch):
         "INNER_TEXT_SAMPLE",
         "OUTER_TEXT_SAMPLE",
         config=GlyphForgeConfig(
-            max_chars_per_line=5,
             frame_font_size=40,
             output_font_size=40,
             inner_color=(255, 183, 197),

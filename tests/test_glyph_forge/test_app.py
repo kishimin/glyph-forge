@@ -27,7 +27,6 @@ def test_generate_image_accepts_compact_request():
             "frame_text": "ABCDEF",
             "inner_text": "x",
             "outer_text": ".",
-            "max_chars_per_line": 5,
             "frame_font_size": 10,
             "output_font_size": 10,
             "inner_color": [255, 0, 0],
@@ -118,31 +117,41 @@ def test_generate_image_from_uploaded_frame_image_rejects_invalid_file():
     assert response.status_code == 422
 
 
-def test_generate_image_rejects_non_positive_options():
+def test_generate_image_accepts_short_frame_with_internal_wrapping():
     client = TestClient(app)
 
     response = client.post(
         "/images",
         json={
-            "frame_text": "A",
+            "frame_text": "ABC",
             "inner_text": "x",
             "outer_text": ".",
-            "max_chars_per_line": 0,
+        },
+    )
+
+    assert response.status_code == 200
+
+
+def test_generate_image_request_does_not_expose_frame_wrapping():
+    properties = GenerateImageRequest.model_json_schema()["properties"]
+
+    assert "max_chars_per_line" not in properties
+
+
+def test_generate_image_rejects_legacy_max_chars_per_line():
+    client = TestClient(app)
+
+    response = client.post(
+        "/images",
+        json={
+            "frame_text": "ABCDE",
+            "inner_text": "x",
+            "outer_text": ".",
+            "max_chars_per_line": 5,
         },
     )
 
     assert response.status_code == 422
-
-
-def test_generate_image_request_accepts_64_chars_per_line():
-    request = GenerateImageRequest(
-        frame_text="A" * 64,
-        inner_text="x",
-        outer_text=".",
-        max_chars_per_line=64,
-    )
-
-    assert request.max_chars_per_line == 64
 
 
 def test_generate_image_request_normalizes_text_before_enforcing_limits():
@@ -150,7 +159,6 @@ def test_generate_image_request_normalizes_text_before_enforcing_limits():
         frame_text="e\u0301" * 64,
         inner_text="x" * 128,
         outer_text="." * 128,
-        max_chars_per_line=64,
         frame_font_size=8,
         output_font_size=10,
     )
@@ -247,38 +255,6 @@ def test_generate_image_request_rejects_font_size_outside_limits(field_name, val
 
     with pytest.raises(ValidationError):
         GenerateImageRequest(**payload)
-
-
-def test_generate_image_rejects_chars_per_line_above_frame_text_length():
-    client = TestClient(app)
-
-    response = client.post(
-        "/images",
-        json={
-            "frame_text": "A",
-            "inner_text": "x",
-            "outer_text": ".",
-            "max_chars_per_line": 2,
-        },
-    )
-
-    assert response.status_code == 422
-
-
-def test_generate_image_rejects_more_than_64_chars_per_line():
-    client = TestClient(app)
-
-    response = client.post(
-        "/images",
-        json={
-            "frame_text": "A" * 65,
-            "inner_text": "x",
-            "outer_text": ".",
-            "max_chars_per_line": 65,
-        },
-    )
-
-    assert response.status_code == 422
 
 
 def test_generate_image_rejects_legacy_frame_fields():
