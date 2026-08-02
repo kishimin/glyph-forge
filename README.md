@@ -68,8 +68,11 @@ metadata.
 │       └── services
 ├── tests
 │   └── test_glyph_forge
+├── .dockerignore
+├── Dockerfile
 ├── LICENSE
 ├── README.md
+├── requirements-prod.txt
 ├── requirements.txt
 ├── setup.py
 └── pytest.ini
@@ -138,6 +141,26 @@ Open:
 
 ```text
 http://localhost:8000/docs
+```
+
+### Run the Production Container
+
+Build the Linux image used by Sakura Cloud AppRun:
+
+```bash
+docker build --platform linux/amd64 -t glyph-forge:local .
+```
+
+Start the API on port 8080:
+
+```bash
+docker run --rm -p 8080:8080 glyph-forge:local
+```
+
+Confirm that the container is healthy:
+
+```bash
+curl http://localhost:8080/health
 ```
 
 <p align="right">(<a href="#top">back to top</a>)</p>
@@ -251,6 +274,7 @@ Image generation runs in a child process that is stopped after 30 seconds.
 | `flake8 .`                       | Run style checks                    |
 | `mypy src`                       | Run type checks                     |
 | `uvicorn app.main:app --reload`  | Start the local API server          |
+| `docker build --platform linux/amd64 -t glyph-forge:local .` | Build the production image |
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 

@@ -1,13 +1,10 @@
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_production_dependencies_are_runtime_only() -> None:
-    requirements = (
-        PROJECT_ROOT / "requirements-prod.txt"
-    ).read_text(encoding="utf-8")
+    requirements = (PROJECT_ROOT / "requirements-prod.txt").read_text(encoding="utf-8")
 
     assert requirements.splitlines() == [
         "anyio==4.2.0",
@@ -25,8 +22,7 @@ def test_container_runs_the_api_as_a_non_root_user() -> None:
     assert "USER app" in dockerfile
     assert "EXPOSE 8080" in dockerfile
     assert (
-        'CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", '
-        '"--port", "8080"]'
+        'CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", ' '"--port", "8080"]'
     ) in dockerfile
     assert "--reload" not in dockerfile
     assert "pip install -e" not in dockerfile
