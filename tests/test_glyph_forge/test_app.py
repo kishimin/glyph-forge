@@ -1,7 +1,9 @@
 from io import BytesIO
 
+import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
+from pydantic import ValidationError
 
 from app.main import app
 from app.schemas import GenerateImageRequest
@@ -27,7 +29,7 @@ def test_generate_image_accepts_compact_request():
             "outer_text": ".",
             "max_chars_per_line": 5,
             "frame_font_size": 10,
-            "output_font_size": 2,
+            "output_font_size": 10,
             "inner_color": [255, 0, 0],
             "outer_color": [0, 0, 255],
         },
@@ -143,6 +145,81 @@ def test_generate_image_request_accepts_64_chars_per_line():
     assert request.max_chars_per_line == 64
 
 
+def test_generate_image_request_normalizes_text_before_enforcing_limits():
+    request = GenerateImageRequest(
+        frame_text="e\u0301" * 64,
+        inner_text="x" * 128,
+        outer_text="." * 128,
+        max_chars_per_line=64,
+        frame_font_size=8,
+        output_font_size=10,
+    )
+
+    assert request.frame_text == "é" * 64
+
+
+@pytest.mark.parametrize(
+    ("field_name", "value"),
+    [
+        ("frame_text", "A" * 65),
+        ("inner_text", "x" * 129),
+        ("outer_text", "." * 129),
+    ],
+)
+def test_generate_image_request_rejects_text_above_limit(field_name, value):
+    payload = {
+        "frame_text": "A",
+        "inner_text": "x",
+        "outer_text": ".",
+    }
+    payload[field_name] = value
+
+    with pytest.raises(ValidationError):
+        GenerateImageRequest(**payload)
+
+
+@pytest.mark.parametrize(
+    ("field_name", "value"),
+    [
+        ("frame_text", "   "),
+        ("inner_text", "line\nbreak"),
+        ("outer_text", "tab\ttext"),
+        ("outer_text", "control\x00text"),
+    ],
+)
+def test_generate_image_request_rejects_non_renderable_text(field_name, value):
+    payload = {
+        "frame_text": "A",
+        "inner_text": "x",
+        "outer_text": ".",
+    }
+    payload[field_name] = value
+
+    with pytest.raises(ValidationError):
+        GenerateImageRequest(**payload)
+
+
+@pytest.mark.parametrize(
+    ("field_name", "value"),
+    [
+        ("frame_font_size", 7),
+        ("frame_font_size", 129),
+        ("output_font_size", 9),
+        ("output_font_size", 65),
+    ],
+)
+def test_generate_image_request_rejects_font_size_outside_limits(field_name, value):
+    payload = {
+        "frame_text": "A",
+        "inner_text": "x",
+        "outer_text": ".",
+    }
+    payload[field_name] = value
+
+    with pytest.raises(ValidationError):
+        GenerateImageRequest(**payload)
+
+
 def test_generate_image_rejects_chars_per_line_above_frame_text_length():
     client = TestClient(app)
 
@@ -234,6 +311,38 @@ def test_generate_image_rejects_color_values_outside_rgb_range():
             "outer_text": ".",
             "inner_color": [256, 0, 0],
         },
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize(
+    "invalid_form_value",
+    [
+        {"inner_text": "x" * 129},
+        {"outer_text": "." * 129},
+        {"inner_text": "line\nbreak"},
+        {"output_font_size": "9"},
+        {"output_font_size": "65"},
+    ],
+)
+def test_generate_image_from_frame_file_enforces_public_input_limits(
+    invalid_form_value,
+):
+    client = TestClient(app)
+    upload_buffer = BytesIO()
+    Image.new("RGB", (2, 1), (255, 255, 255)).save(upload_buffer, format="PNG")
+    upload_buffer.seek(0)
+    form_data = {
+        "inner_text": "x",
+        "outer_text": ".",
+        **invalid_form_value,
+    }
+
+    response = client.post(
+        "/images/frame-file",
+        data=form_data,
+        files={"frame_image": ("frame.png", upload_buffer, "image/png")},
     )
 
     assert response.status_code == 422
