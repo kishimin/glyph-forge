@@ -1,5 +1,7 @@
 import pytest
+from PIL import Image
 
+from glyph_forge.services import text_image_renderer
 from glyph_forge.services.text_image_renderer import render_text_image, split_text_lines
 
 
@@ -56,6 +58,27 @@ def test_render_text_image_centers_character_in_cell():
 
     assert left > 10
     assert img.width - right - 1 > 10
+
+
+def test_render_text_image_keeps_multicodepoint_graphemes_in_one_cell(monkeypatch):
+    astronaut = "👩‍🚀"
+    captured_grid = None
+
+    def capture_grid(text_grid, *args, **kwargs):
+        nonlocal captured_grid
+        captured_grid = text_grid
+        return Image.new("RGBA", (1, 1))
+
+    monkeypatch.setattr(text_image_renderer, "render_text_grid_image", capture_grid)
+
+    render_text_image(
+        input_text=astronaut + "A",
+        column_count=2,
+        row_count=1,
+        font_size=10,
+    )
+
+    assert captured_grid == [[astronaut, "A"]]
 
 
 def test_split_text_lines_rejects_empty_text():
