@@ -23,7 +23,7 @@ from glyph_forge.services.text_image_renderer import (
     resolve_text_cell_size,
     split_text_lines,
 )
-from glyph_forge.services.unicode_text import repeat_graphemes
+from glyph_forge.services.unicode_text import repeat_graphemes, split_graphemes
 
 VISIBLE_FRAME_TEXT_LINE_SPACING_RATIO = 1.1
 VISIBLE_FRAME_MASK_FILTER_SIZE = 17
@@ -62,7 +62,7 @@ def _maximized_frame_chars_per_line(
 
     best_chars_per_line = 1
     best_font_size = 0
-    for chars_per_line in range(1, len(frame_text) + 1):
+    for chars_per_line in range(1, len(split_graphemes(frame_text)) + 1):
         text_lines = split_text_lines(frame_text, chars_per_line)
         font_size = _largest_fitting_font_size(text_lines, canvas_size)
         if font_size > best_font_size:
@@ -201,9 +201,12 @@ def render_glyph_art_image(
     if config is None:
         config = GlyphForgeConfig()
 
-    chars_per_line = min(GENERAL_FRAME_CHARS_PER_LINE, len(frame_text))
+    chars_per_line = min(
+        GENERAL_FRAME_CHARS_PER_LINE,
+        len(split_graphemes(frame_text)),
+    )
     text_lines = split_text_lines(frame_text, chars_per_line)
-    column_count = max(len(line) for line in text_lines)
+    column_count = max(len(split_graphemes(line)) for line in text_lines)
     row_count = len(text_lines)
 
     frame_img = render_text_image(
