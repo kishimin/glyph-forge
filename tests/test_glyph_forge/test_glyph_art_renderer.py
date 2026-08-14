@@ -44,6 +44,32 @@ def test_render_glyph_art_image_returns_non_blank_result():
     assert len(colors) > 1
 
 
+def test_render_glyph_art_image_sizes_frame_grid_by_grapheme(monkeypatch):
+    astronaut = "👩‍🚀"
+    captured_grid_size = None
+
+    def capture_frame_grid(input_text, column_count, row_count, *args, **kwargs):
+        nonlocal captured_grid_size
+        captured_grid_size = (column_count, row_count)
+        return Image.new("RGB", (column_count, row_count), (255, 255, 255))
+
+    monkeypatch.setattr(glyph_art_renderer, "render_text_image", capture_frame_grid)
+    monkeypatch.setattr(
+        glyph_art_renderer,
+        "_validate_glyph_grid_output_size",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        glyph_art_renderer,
+        "render_text_grid_image",
+        lambda *args, **kwargs: Image.new("RGBA", (1, 1)),
+    )
+
+    render_glyph_art_image(astronaut * 2, "x", ".", config=_sample_config())
+
+    assert captured_grid_size == (2, 1)
+
+
 def test_render_glyph_art_image_uses_configured_background_color():
     img = render_glyph_art_image(
         "FRAME_TEXT_SAMPLE",
