@@ -1,7 +1,9 @@
 import pytest
 from PIL import Image
 
+from glyph_forge.services import glyph_art_renderer
 from glyph_forge.services.glyph_art_renderer import (
+    _fit_frame_image_to_output_grid,
     _fit_image_on_canvas,
     _frame_image_to_binary_grid,
     _maximized_frame_chars_per_line,
@@ -41,6 +43,32 @@ def test_render_glyph_art_image_returns_non_blank_result():
 
     assert colors is not None
     assert len(colors) > 1
+
+
+def test_render_glyph_art_image_sizes_frame_grid_by_grapheme(monkeypatch):
+    astronaut = "👩‍🚀"
+    captured_grid_size = None
+
+    def capture_frame_grid(input_text, column_count, row_count, *args, **kwargs):
+        nonlocal captured_grid_size
+        captured_grid_size = (column_count, row_count)
+        return Image.new("RGB", (column_count, row_count), (255, 255, 255))
+
+    monkeypatch.setattr(glyph_art_renderer, "render_text_image", capture_frame_grid)
+    monkeypatch.setattr(
+        glyph_art_renderer,
+        "_validate_glyph_grid_output_size",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        glyph_art_renderer,
+        "render_text_grid_image",
+        lambda *args, **kwargs: Image.new("RGBA", (1, 1)),
+    )
+
+    render_glyph_art_image(astronaut * 2, "x", ".", config=_sample_config())
+
+    assert captured_grid_size == (2, 1)
 
 
 def test_render_glyph_art_image_uses_configured_background_color():
@@ -435,6 +463,41 @@ def test_render_glyph_art_image_rejects_output_above_size_limit_before_grid(
         )
 
 
+def test_fit_frame_image_to_output_grid_uses_the_given_cell_size():
+    frame_img = Image.new("RGB", (50, 50), (255, 255, 255))
+
+    fitted = _fit_frame_image_to_output_grid(frame_img, (100, 100), 25)
+
+    assert fitted.size == (4, 4)
+
+
+def test_render_glyph_art_image_fits_frame_using_resolved_fill_cell_size(monkeypatch):
+    family = "👨‍👩‍👧‍👦"
+    captured_cell_size = None
+
+    def capture_fit(frame_img, max_output_size, cell_size):
+        nonlocal captured_cell_size
+        captured_cell_size = cell_size
+        return frame_img
+
+    monkeypatch.setattr(
+        glyph_art_renderer, "_fit_frame_image_to_output_grid", capture_fit
+    )
+    monkeypatch.setattr(
+        glyph_art_renderer, "_validate_glyph_grid_output_size", lambda *a, **k: None
+    )
+
+    render_glyph_art_image(
+        "A",
+        family,
+        "o",
+        config=GlyphForgeConfig(output_font_size=10),
+        max_output_size=(200, 200),
+    )
+
+    assert captured_cell_size > 10
+
+
 def test_render_image_frame_art_image_rejects_output_above_size_limit():
     frame_img = Image.new("RGB", (33, 1), (255, 255, 255))
 
@@ -546,6 +609,45 @@ def test_render_tiled_text_canvas_rejects_empty_text():
         )
 
 
+def test_render_tiled_text_canvas_keeps_multicodepoint_graphemes_in_cells(
+    monkeypatch,
+):
+    astronaut = "👩‍🚀"
+    captured_grid = None
+
+    def capture_grid(text_grid, *args, **kwargs):
+        nonlocal captured_grid
+        captured_grid = text_grid
+        return Image.new("RGBA", (20, 10))
+
+    monkeypatch.setattr(glyph_art_renderer, "render_text_grid_image", capture_grid)
+    monkeypatch.setattr(glyph_art_renderer, "resolve_text_cell_size", lambda *args: 30)
+
+    _render_tiled_text_canvas(
+        (60, 30),
+        astronaut + "A",
+        (0, 0, 0),
+        10,
+        (255, 255, 255),
+    )
+
+    assert captured_grid == [[astronaut, "A"]]
+
+
+def test_render_tiled_text_canvas_limits_tiles_by_actual_grapheme_cell_size():
+    family = "👨‍👩‍👧‍👦"
+
+    img = _render_tiled_text_canvas(
+        (1500, 500),
+        family,
+        (0, 0, 0),
+        10,
+        (255, 255, 255),
+    )
+
+    assert img.size == (1500, 500)
+
+
 def test_render_outer_text_canvas_rejects_empty_outer_text():
     with pytest.raises(ValueError, match="outer_text must not be empty"):
         _render_outer_text_canvas(
@@ -555,6 +657,31 @@ def test_render_outer_text_canvas_rejects_empty_outer_text():
             (255, 0, 0),
             20,
         )
+
+
+def test_render_outer_text_canvas_keeps_multicodepoint_graphemes_in_cells(
+    monkeypatch,
+):
+    astronaut = "👩‍🚀"
+    captured_grid = None
+
+    def capture_grid(text_grid, *args, **kwargs):
+        nonlocal captured_grid
+        captured_grid = text_grid
+        return Image.new("RGBA", (20, 10))
+
+    monkeypatch.setattr(glyph_art_renderer, "render_text_grid_image", capture_grid)
+    monkeypatch.setattr(glyph_art_renderer, "resolve_text_cell_size", lambda *args: 30)
+
+    _render_outer_text_canvas(
+        (60, 30),
+        (255, 255, 255),
+        astronaut + "A",
+        (0, 0, 0),
+        10,
+    )
+
+    assert captured_grid == [[astronaut, "A"]]
 
 
 def _fake_frame_image(colors):

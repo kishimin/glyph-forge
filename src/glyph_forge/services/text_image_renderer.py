@@ -9,6 +9,7 @@ from glyph_forge.services.settings import (
     IMAGE_MODE_RGBA,
     Color,
 )
+from glyph_forge.services.unicode_text import split_graphemes
 
 
 def split_text_lines(input_text: str, max_chars_per_line: int) -> list[str]:
@@ -17,9 +18,10 @@ def split_text_lines(input_text: str, max_chars_per_line: int) -> list[str]:
     if max_chars_per_line < 1:
         raise ValueError("max_chars_per_line must be greater than 0")
 
+    graphemes = split_graphemes(input_text)
     return [
-        input_text[index : index + max_chars_per_line]
-        for index in range(0, len(input_text), max_chars_per_line)
+        "".join(graphemes[index : index + max_chars_per_line])
+        for index in range(0, len(graphemes), max_chars_per_line)
     ]
 
 
@@ -60,7 +62,7 @@ def _resolve_cell_size(
 
 def resolve_text_cell_size(text: str, font_size: int) -> int:
     font = load_font(font_size)
-    return _resolve_cell_size([list(text)], font, font_size)
+    return _resolve_cell_size([split_graphemes(text)], font, font_size)
 
 
 def _draw_solid_text_cell(
@@ -143,8 +145,9 @@ def render_text_image(
 ) -> Image.Image:
     if not input_text:
         raise ValueError("input_text must not be empty")
+    graphemes = split_graphemes(input_text)
     text_grid = [
-        list(input_text[index : index + column_count])
+        graphemes[index : index + column_count]
         for index in range(0, column_count * row_count, column_count)
     ]
     return render_text_grid_image(

@@ -11,6 +11,14 @@ def test_cycle_text_cycles_input_text():
     assert chars == ["a", "b", "a", "b", "a"]
 
 
+def test_cycle_text_keeps_multicodepoint_graphemes_together():
+    astronaut = "👩‍🚀"
+
+    graphemes = list(islice(cycle_text(astronaut + "A"), 3))
+
+    assert graphemes == [astronaut, "A", astronaut]
+
+
 def test_binary_grid_to_text_grid_fills_black_with_inner_and_white_with_outer():
     text_grid = binary_grid_to_text_grid(
         [

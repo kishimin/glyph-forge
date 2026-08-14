@@ -23,6 +23,7 @@ from glyph_forge.services.text_image_renderer import (
     resolve_text_cell_size,
     split_text_lines,
 )
+from glyph_forge.services.unicode_text import repeat_graphemes, split_graphemes
 
 VISIBLE_FRAME_TEXT_LINE_SPACING_RATIO = 1.1
 VISIBLE_FRAME_MASK_FILTER_SIZE = 17
@@ -61,7 +62,7 @@ def _maximized_frame_chars_per_line(
 
     best_chars_per_line = 1
     best_font_size = 0
-    for chars_per_line in range(1, len(frame_text) + 1):
+    for chars_per_line in range(1, len(split_graphemes(frame_text)) + 1):
         text_lines = split_text_lines(frame_text, chars_per_line)
         font_size = _largest_fitting_font_size(text_lines, canvas_size)
         if font_size > best_font_size:
@@ -118,11 +119,11 @@ def _frame_image_to_binary_grid(frame_img: Image.Image) -> list[list[int]]:
 def _fit_frame_image_to_output_grid(
     frame_img: Image.Image,
     max_output_size: tuple[int, int],
-    output_font_size: int,
+    cell_size: int,
 ) -> Image.Image:
     max_grid_size = (
-        max(1, max_output_size[0] // output_font_size),
-        max(1, max_output_size[1] // output_font_size),
+        max(1, max_output_size[0] // cell_size),
+        max(1, max_output_size[1] // cell_size),
     )
     if frame_img.width <= max_grid_size[0] and frame_img.height <= max_grid_size[1]:
         return frame_img
@@ -200,9 +201,12 @@ def render_glyph_art_image(
     if config is None:
         config = GlyphForgeConfig()
 
-    chars_per_line = min(GENERAL_FRAME_CHARS_PER_LINE, len(frame_text))
+    chars_per_line = min(
+        GENERAL_FRAME_CHARS_PER_LINE,
+        len(split_graphemes(frame_text)),
+    )
     text_lines = split_text_lines(frame_text, chars_per_line)
-    column_count = max(len(line) for line in text_lines)
+    column_count = max(len(split_graphemes(line)) for line in text_lines)
     row_count = len(text_lines)
 
     frame_img = render_text_image(
@@ -214,10 +218,13 @@ def render_glyph_art_image(
     )
     if max_output_size is not None:
         validate_output_image_size(max_output_size)
+        fill_cell_size = resolve_text_cell_size(
+            inner_text + outer_text, config.output_font_size
+        )
         frame_img = _fit_frame_image_to_output_grid(
             frame_img,
             max_output_size,
-            config.output_font_size,
+            fill_cell_size,
         )
     _validate_glyph_grid_output_size(
         frame_img.size,
@@ -358,11 +365,13 @@ def _render_tiled_text_canvas(
     if not text:
         raise ValueError("text must not be empty")
 
-    columns = ceil(canvas_size[0] / output_font_size)
-    rows = ceil(canvas_size[1] / output_font_size)
-    chars = (text * (ceil(columns * rows / len(text))))[: columns * rows]
+    cell_size = resolve_text_cell_size(text, output_font_size)
+    columns = ceil(canvas_size[0] / cell_size)
+    rows = ceil(canvas_size[1] / cell_size)
+    graphemes = repeat_graphemes(text, columns * rows)
     text_grid = [
-        list(chars[index : index + columns]) for index in range(0, len(chars), columns)
+        graphemes[index : index + columns]
+        for index in range(0, len(graphemes), columns)
     ]
     img = render_text_grid_image(
         text_grid,
@@ -383,22 +392,13 @@ def _render_outer_text_canvas(
     if not outer_text:
         raise ValueError("outer_text must not be empty")
 
-    columns = ceil(canvas_size[0] / output_font_size)
-    rows = ceil(canvas_size[1] / output_font_size)
-    outer_chars = (outer_text * (ceil(columns * rows / len(outer_text))))[
-        : columns * rows
-    ]
-    text_grid = [
-        list(outer_chars[index : index + columns])
-        for index in range(0, len(outer_chars), columns)
-    ]
-    background = render_text_grid_image(
-        text_grid,
+    return _render_tiled_text_canvas(
+        canvas_size,
+        outer_text,
+        outer_color,
         output_font_size,
-        fill=outer_color,
-        background_color=background_color,
+        background_color,
     )
-    return background.crop((0, 0, canvas_size[0], canvas_size[1]))
 
 
 def render_x_icon_image(
