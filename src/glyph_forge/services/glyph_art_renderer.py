@@ -119,11 +119,11 @@ def _frame_image_to_binary_grid(frame_img: Image.Image) -> list[list[int]]:
 def _fit_frame_image_to_output_grid(
     frame_img: Image.Image,
     max_output_size: tuple[int, int],
-    output_font_size: int,
+    cell_size: int,
 ) -> Image.Image:
     max_grid_size = (
-        max(1, max_output_size[0] // output_font_size),
-        max(1, max_output_size[1] // output_font_size),
+        max(1, max_output_size[0] // cell_size),
+        max(1, max_output_size[1] // cell_size),
     )
     if frame_img.width <= max_grid_size[0] and frame_img.height <= max_grid_size[1]:
         return frame_img
@@ -218,10 +218,13 @@ def render_glyph_art_image(
     )
     if max_output_size is not None:
         validate_output_image_size(max_output_size)
+        fill_cell_size = resolve_text_cell_size(
+            inner_text + outer_text, config.output_font_size
+        )
         frame_img = _fit_frame_image_to_output_grid(
             frame_img,
             max_output_size,
-            config.output_font_size,
+            fill_cell_size,
         )
     _validate_glyph_grid_output_size(
         frame_img.size,
