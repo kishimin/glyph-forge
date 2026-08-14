@@ -23,6 +23,7 @@ from glyph_forge.services.text_image_renderer import (
     resolve_text_cell_size,
     split_text_lines,
 )
+from glyph_forge.services.unicode_text import repeat_graphemes
 
 VISIBLE_FRAME_TEXT_LINE_SPACING_RATIO = 1.1
 VISIBLE_FRAME_MASK_FILTER_SIZE = 17
@@ -360,9 +361,10 @@ def _render_tiled_text_canvas(
 
     columns = ceil(canvas_size[0] / output_font_size)
     rows = ceil(canvas_size[1] / output_font_size)
-    chars = (text * (ceil(columns * rows / len(text))))[: columns * rows]
+    graphemes = repeat_graphemes(text, columns * rows)
     text_grid = [
-        list(chars[index : index + columns]) for index in range(0, len(chars), columns)
+        graphemes[index : index + columns]
+        for index in range(0, len(graphemes), columns)
     ]
     img = render_text_grid_image(
         text_grid,
@@ -383,22 +385,13 @@ def _render_outer_text_canvas(
     if not outer_text:
         raise ValueError("outer_text must not be empty")
 
-    columns = ceil(canvas_size[0] / output_font_size)
-    rows = ceil(canvas_size[1] / output_font_size)
-    outer_chars = (outer_text * (ceil(columns * rows / len(outer_text))))[
-        : columns * rows
-    ]
-    text_grid = [
-        list(outer_chars[index : index + columns])
-        for index in range(0, len(outer_chars), columns)
-    ]
-    background = render_text_grid_image(
-        text_grid,
+    return _render_tiled_text_canvas(
+        canvas_size,
+        outer_text,
+        outer_color,
         output_font_size,
-        fill=outer_color,
-        background_color=background_color,
+        background_color,
     )
-    return background.crop((0, 0, canvas_size[0], canvas_size[1]))
 
 
 def render_x_icon_image(
