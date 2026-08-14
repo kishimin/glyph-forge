@@ -362,8 +362,9 @@ def _render_tiled_text_canvas(
     if not text:
         raise ValueError("text must not be empty")
 
-    columns = ceil(canvas_size[0] / output_font_size)
-    rows = ceil(canvas_size[1] / output_font_size)
+    cell_size = resolve_text_cell_size(text, output_font_size)
+    columns = ceil(canvas_size[0] / cell_size)
+    rows = ceil(canvas_size[1] / cell_size)
     graphemes = repeat_graphemes(text, columns * rows)
     text_grid = [
         graphemes[index : index + columns]

@@ -587,7 +587,7 @@ def test_render_tiled_text_canvas_keeps_multicodepoint_graphemes_in_cells(
     monkeypatch.setattr(glyph_art_renderer, "render_text_grid_image", capture_grid)
 
     _render_tiled_text_canvas(
-        (20, 10),
+        (60, 30),
         astronaut + "A",
         (0, 0, 0),
         10,
@@ -636,7 +636,7 @@ def test_render_outer_text_canvas_keeps_multicodepoint_graphemes_in_cells(
     monkeypatch.setattr(glyph_art_renderer, "render_text_grid_image", capture_grid)
 
     _render_outer_text_canvas(
-        (20, 10),
+        (60, 30),
         (255, 255, 255),
         astronaut + "A",
         (0, 0, 0),
