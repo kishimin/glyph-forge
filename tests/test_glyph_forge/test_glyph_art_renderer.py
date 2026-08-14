@@ -597,6 +597,20 @@ def test_render_tiled_text_canvas_keeps_multicodepoint_graphemes_in_cells(
     assert captured_grid == [[astronaut, "A"]]
 
 
+def test_render_tiled_text_canvas_limits_tiles_by_actual_grapheme_cell_size():
+    family = "👨‍👩‍👧‍👦"
+
+    img = _render_tiled_text_canvas(
+        (1500, 500),
+        family,
+        (0, 0, 0),
+        10,
+        (255, 255, 255),
+    )
+
+    assert img.size == (1500, 500)
+
+
 def test_render_outer_text_canvas_rejects_empty_outer_text():
     with pytest.raises(ValueError, match="outer_text must not be empty"):
         _render_outer_text_canvas(
