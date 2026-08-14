@@ -63,6 +63,14 @@ def test_split_text_lines_rejects_empty_text():
         split_text_lines("", 5)
 
 
+def test_split_text_lines_keeps_multicodepoint_graphemes_together():
+    astronaut = "👩‍🚀"
+
+    lines = split_text_lines(astronaut * 3, 2)
+
+    assert lines == [astronaut * 2, astronaut]
+
+
 def test_render_text_image_rejects_empty_text():
     with pytest.raises(ValueError, match="input_text must not be empty"):
         render_text_image("", column_count=1, row_count=1, font_size=20)
