@@ -3,6 +3,7 @@ from PIL import Image
 
 from glyph_forge.services import glyph_art_renderer
 from glyph_forge.services.glyph_art_renderer import (
+    _fit_frame_image_to_output_grid,
     _fit_image_on_canvas,
     _frame_image_to_binary_grid,
     _maximized_frame_chars_per_line,
@@ -460,6 +461,41 @@ def test_render_glyph_art_image_rejects_output_above_size_limit_before_grid(
             "o",
             config=GlyphForgeConfig(output_font_size=64),
         )
+
+
+def test_fit_frame_image_to_output_grid_uses_the_given_cell_size():
+    frame_img = Image.new("RGB", (50, 50), (255, 255, 255))
+
+    fitted = _fit_frame_image_to_output_grid(frame_img, (100, 100), 25)
+
+    assert fitted.size == (4, 4)
+
+
+def test_render_glyph_art_image_fits_frame_using_resolved_fill_cell_size(monkeypatch):
+    family = "👨‍👩‍👧‍👦"
+    captured_cell_size = None
+
+    def capture_fit(frame_img, max_output_size, cell_size):
+        nonlocal captured_cell_size
+        captured_cell_size = cell_size
+        return frame_img
+
+    monkeypatch.setattr(
+        glyph_art_renderer, "_fit_frame_image_to_output_grid", capture_fit
+    )
+    monkeypatch.setattr(
+        glyph_art_renderer, "_validate_glyph_grid_output_size", lambda *a, **k: None
+    )
+
+    render_glyph_art_image(
+        "A",
+        family,
+        "o",
+        config=GlyphForgeConfig(output_font_size=10),
+        max_output_size=(200, 200),
+    )
+
+    assert captured_cell_size > 10
 
 
 def test_render_image_frame_art_image_rejects_output_above_size_limit():
