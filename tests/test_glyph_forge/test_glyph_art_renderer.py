@@ -1,6 +1,7 @@
 import pytest
 from PIL import Image
 
+from glyph_forge.services import glyph_art_renderer
 from glyph_forge.services.glyph_art_renderer import (
     _fit_image_on_canvas,
     _frame_image_to_binary_grid,
@@ -546,6 +547,30 @@ def test_render_tiled_text_canvas_rejects_empty_text():
         )
 
 
+def test_render_tiled_text_canvas_keeps_multicodepoint_graphemes_in_cells(
+    monkeypatch,
+):
+    astronaut = "👩‍🚀"
+    captured_grid = None
+
+    def capture_grid(text_grid, *args, **kwargs):
+        nonlocal captured_grid
+        captured_grid = text_grid
+        return Image.new("RGBA", (20, 10))
+
+    monkeypatch.setattr(glyph_art_renderer, "render_text_grid_image", capture_grid)
+
+    _render_tiled_text_canvas(
+        (20, 10),
+        astronaut + "A",
+        (0, 0, 0),
+        10,
+        (255, 255, 255),
+    )
+
+    assert captured_grid == [[astronaut, "A"]]
+
+
 def test_render_outer_text_canvas_rejects_empty_outer_text():
     with pytest.raises(ValueError, match="outer_text must not be empty"):
         _render_outer_text_canvas(
@@ -555,6 +580,30 @@ def test_render_outer_text_canvas_rejects_empty_outer_text():
             (255, 0, 0),
             20,
         )
+
+
+def test_render_outer_text_canvas_keeps_multicodepoint_graphemes_in_cells(
+    monkeypatch,
+):
+    astronaut = "👩‍🚀"
+    captured_grid = None
+
+    def capture_grid(text_grid, *args, **kwargs):
+        nonlocal captured_grid
+        captured_grid = text_grid
+        return Image.new("RGBA", (20, 10))
+
+    monkeypatch.setattr(glyph_art_renderer, "render_text_grid_image", capture_grid)
+
+    _render_outer_text_canvas(
+        (20, 10),
+        (255, 255, 255),
+        astronaut + "A",
+        (0, 0, 0),
+        10,
+    )
+
+    assert captured_grid == [[astronaut, "A"]]
 
 
 def _fake_frame_image(colors):
