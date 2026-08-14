@@ -463,6 +463,22 @@ def test_generate_image_request_normalizes_text_before_enforcing_limits():
     assert request.frame_text == "é" * 64
 
 
+def test_generate_image_request_accepts_multicodepoint_graphemes_at_limits():
+    astronaut = "👩‍🚀"
+
+    request = GenerateImageRequest(
+        frame_text=astronaut * 64,
+        inner_text=astronaut * 128,
+        outer_text=astronaut * 128,
+        frame_font_size=8,
+        output_font_size=10,
+    )
+
+    assert request.frame_text == astronaut * 64
+    assert request.inner_text == astronaut * 128
+    assert request.outer_text == astronaut * 128
+
+
 @pytest.mark.parametrize(
     ("field_name", "value"),
     [
