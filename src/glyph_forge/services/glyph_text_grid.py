@@ -1,11 +1,13 @@
 from itertools import cycle
 from typing import Generator
 
+from glyph_forge.services.unicode_text import split_graphemes
+
 
 def cycle_text(text: str) -> Generator[str, None, None]:
     if not text:
         raise ValueError("text must not be empty")
-    yield from cycle(text)
+    yield from cycle(split_graphemes(text))
 
 
 def binary_grid_to_text_grid(
