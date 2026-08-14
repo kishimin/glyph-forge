@@ -585,6 +585,7 @@ def test_render_tiled_text_canvas_keeps_multicodepoint_graphemes_in_cells(
         return Image.new("RGBA", (20, 10))
 
     monkeypatch.setattr(glyph_art_renderer, "render_text_grid_image", capture_grid)
+    monkeypatch.setattr(glyph_art_renderer, "resolve_text_cell_size", lambda *args: 30)
 
     _render_tiled_text_canvas(
         (60, 30),
@@ -634,6 +635,7 @@ def test_render_outer_text_canvas_keeps_multicodepoint_graphemes_in_cells(
         return Image.new("RGBA", (20, 10))
 
     monkeypatch.setattr(glyph_art_renderer, "render_text_grid_image", capture_grid)
+    monkeypatch.setattr(glyph_art_renderer, "resolve_text_cell_size", lambda *args: 30)
 
     _render_outer_text_canvas(
         (60, 30),
