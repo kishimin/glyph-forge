@@ -12,6 +12,7 @@ def test_production_dependencies_are_runtime_only() -> None:
         "numpy==1.26.4",
         "pillow==10.3.0",
         "python-multipart==0.0.20",
+        "regex==2023.10.3",
         "uvicorn==0.30.1",
     ]
 
