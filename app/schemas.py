@@ -16,6 +16,7 @@ from glyph_forge.services.settings import (
     DEFAULT_TEXT_COLOR,
     GlyphForgeConfig,
 )
+from glyph_forge.services.unicode_text import exceeds_grapheme_limit
 
 MAX_FRAME_TEXT_LENGTH = 64
 MAX_FILL_TEXT_LENGTH = 128
@@ -24,8 +25,8 @@ MAX_FRAME_FONT_SIZE = 128
 MIN_OUTPUT_FONT_SIZE = 10
 MAX_OUTPUT_FONT_SIZE = 64
 
-FrameText = Annotated[str, Field(min_length=1, max_length=MAX_FRAME_TEXT_LENGTH)]
-FillText = Annotated[str, Field(min_length=1, max_length=MAX_FILL_TEXT_LENGTH)]
+FrameText = Annotated[str, Field(min_length=1)]
+FillText = Annotated[str, Field(min_length=1)]
 FrameFontSize = Annotated[
     int,
     Field(ge=MIN_FRAME_FONT_SIZE, le=MAX_FRAME_FONT_SIZE),
@@ -50,7 +51,7 @@ def normalize_render_text(
         raise ValueError(f"{name} must contain a visible character")
     if any(unicodedata.category(char) == "Cc" for char in normalized_value):
         raise ValueError(f"{name} must not contain control characters")
-    if len(normalized_value) > max_length:
+    if exceeds_grapheme_limit(normalized_value, max_length):
         raise ValueError(f"{name} must not exceed {max_length} characters")
     return normalized_value
 
