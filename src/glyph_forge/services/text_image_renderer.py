@@ -62,7 +62,7 @@ def _resolve_cell_size(
 
 def resolve_text_cell_size(text: str, font_size: int) -> int:
     font = load_font(font_size)
-    return _resolve_cell_size([list(text)], font, font_size)
+    return _resolve_cell_size([split_graphemes(text)], font, font_size)
 
 
 def _draw_solid_text_cell(
@@ -145,8 +145,9 @@ def render_text_image(
 ) -> Image.Image:
     if not input_text:
         raise ValueError("input_text must not be empty")
+    graphemes = split_graphemes(input_text)
     text_grid = [
-        list(input_text[index : index + column_count])
+        graphemes[index : index + column_count]
         for index in range(0, column_count * row_count, column_count)
     ]
     return render_text_grid_image(
