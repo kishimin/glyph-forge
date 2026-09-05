@@ -1,7 +1,7 @@
 import time
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
-from threading import Event
+from threading import Barrier, Event
 
 import pytest
 from fastapi.testclient import TestClient
@@ -75,6 +75,28 @@ def test_generate_image_rate_limit_returns_retry_after_and_exempts_health():
     assert limited_response.headers["retry-after"] == "6"
     assert limited_response.json() == {"detail": "image generation rate limit exceeded"}
     assert health_response.status_code == 200
+
+
+def test_generate_image_accepts_five_concurrent_requests_without_rate_limiting():
+    request_body = {
+        "frame_text": "A",
+        "inner_text": "x",
+        "outer_text": "o",
+        "frame_font_size": 8,
+        "output_font_size": 10,
+    }
+    start_requests = Barrier(5)
+
+    def post_image():
+        start_requests.wait()
+        with TestClient(app) as client:
+            return client.post("/images", json=request_body)
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        responses = list(executor.map(lambda _: post_image(), range(5)))
+
+    assert [response.status_code for response in responses] == [200] * 5
+    assert all(response.status_code != 429 for response in responses)
 
 
 def test_generate_image_capacity_limit_returns_retry_after(monkeypatch):
