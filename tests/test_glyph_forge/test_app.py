@@ -77,7 +77,9 @@ def test_generate_image_rate_limit_returns_retry_after_and_exempts_health():
     assert health_response.status_code == 200
 
 
-def test_generate_image_accepts_five_concurrent_requests_without_rate_limiting():
+def test_generate_image_accepts_five_concurrent_requests_without_rate_limiting(
+    monkeypatch,
+):
     request_body = {
         "frame_text": "A",
         "inner_text": "x",
@@ -86,6 +88,11 @@ def test_generate_image_accepts_five_concurrent_requests_without_rate_limiting()
         "output_font_size": 10,
     }
     start_requests = Barrier(5)
+    monkeypatch.setattr(
+        main_module,
+        "run_image_generation_in_process",
+        lambda *args, **kwargs: b"png",
+    )
 
     def post_image():
         start_requests.wait()
