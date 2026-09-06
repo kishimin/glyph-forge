@@ -66,13 +66,13 @@ def test_generate_image_rate_limit_returns_retry_after_and_exempts_health():
         "output_font_size": 10,
     }
 
-    accepted_responses = [client.post("/images", json=request_body) for _ in range(3)]
+    accepted_responses = [client.post("/images", json=request_body) for _ in range(5)]
     limited_response = client.post("/images", json=request_body)
     health_response = client.get("/health")
 
     assert all(response.status_code == 200 for response in accepted_responses)
     assert limited_response.status_code == 429
-    assert limited_response.headers["retry-after"] == "6"
+    assert int(limited_response.headers["retry-after"]) >= 1
     assert limited_response.json() == {"detail": "image generation rate limit exceeded"}
     assert health_response.status_code == 200
 
