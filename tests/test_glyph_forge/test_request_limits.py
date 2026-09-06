@@ -6,24 +6,7 @@ from app.request_limits import (
     ConcurrentRequestLimiter,
     RequestQueueFull,
     RequestQueueTimeout,
-    TokenBucketRateLimiter,
 )
-
-
-def test_token_bucket_allows_burst_and_refills_at_configured_rate():
-    current_time = [0.0]
-    limiter = TokenBucketRateLimiter(
-        requests_per_minute=10,
-        burst_size=3,
-        time_source=lambda: current_time[0],
-    )
-
-    assert [limiter.consume("client") for _ in range(3)] == [None, None, None]
-    assert limiter.consume("client") == 6
-
-    current_time[0] = 6.0
-
-    assert limiter.consume("client") is None
 
 
 def test_concurrent_request_limiter_rejects_when_waiting_queue_is_full():

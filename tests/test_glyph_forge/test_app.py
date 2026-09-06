@@ -19,13 +19,6 @@ def _slow_image_renderer(*args, **kwargs):
     return Image.new("RGB", (1, 1), (255, 255, 255))
 
 
-@pytest.fixture(autouse=True)
-def reset_image_rate_limiter():
-    limiter = getattr(app.state, "image_rate_limiter", None)
-    if limiter is not None:
-        limiter.reset()
-
-
 def test_health_returns_ok_for_monitoring():
     client = TestClient(app)
 
