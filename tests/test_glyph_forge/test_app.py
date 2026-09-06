@@ -56,7 +56,7 @@ def test_generate_image_accepts_compact_request():
     assert response.content.startswith(b"\x89PNG")
 
 
-def test_generate_image_rate_limit_returns_retry_after_and_exempts_health():
+def test_generate_image_does_not_rate_limit_internal_requests(monkeypatch):
     client = TestClient(app)
     request_body = {
         "frame_text": "A",
@@ -65,15 +65,17 @@ def test_generate_image_rate_limit_returns_retry_after_and_exempts_health():
         "frame_font_size": 8,
         "output_font_size": 10,
     }
+    monkeypatch.setattr(
+        main_module,
+        "run_image_generation_in_process",
+        lambda *args, **kwargs: b"png",
+    )
 
-    accepted_responses = [client.post("/images", json=request_body) for _ in range(5)]
-    limited_response = client.post("/images", json=request_body)
+    responses = [client.post("/images", json=request_body) for _ in range(6)]
     health_response = client.get("/health")
 
-    assert all(response.status_code == 200 for response in accepted_responses)
-    assert limited_response.status_code == 429
-    assert int(limited_response.headers["retry-after"]) >= 1
-    assert limited_response.json() == {"detail": "image generation rate limit exceeded"}
+    assert [response.status_code for response in responses] == [200] * 6
+    assert all(response.status_code != 429 for response in responses)
     assert health_response.status_code == 200
 
 
