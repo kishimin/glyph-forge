@@ -253,11 +253,11 @@ rejected. The complete multipart request is limited to the 2 MiB file plus
 64 KiB of form overhead and accepts one file. Limits and the actual image
 format are checked before decoding.
 
-Image generation endpoints allow a burst of 5 requests per client IP and
-refill at 10 requests per minute. Each application process runs one image
-generation at a time, queues up to 4 requests for 10 seconds, and returns
-`429` or `503` with `Retry-After` when a limit is exceeded. `/health` is exempt.
-Image generation runs in a child process that is stopped after 30 seconds.
+Image generation endpoints are intended for internal use and do not apply an
+IP-based rate limit. Each application process runs one image generation at a
+time, queues up to 4 requests for 10 seconds, and returns `503` with
+`Retry-After` when capacity is unavailable. `/health` is exempt. Image
+generation runs in a child process that is stopped after 30 seconds.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
