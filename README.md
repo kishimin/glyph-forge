@@ -255,7 +255,7 @@ format are checked before decoding.
 
 Image generation endpoints are intended for internal use and do not apply an
 IP-based rate limit. Each application process runs one image generation at a
-time, queues up to 4 requests for 10 seconds, and returns `503` with
+time, queues up to 9 requests for 30 seconds, and returns `503` with
 `Retry-After` when capacity is unavailable. `/health` is exempt. Image
 generation runs in a child process that is stopped after 30 seconds.
 
