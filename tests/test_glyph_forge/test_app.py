@@ -72,7 +72,7 @@ def test_generate_image_does_not_rate_limit_internal_requests(monkeypatch):
     assert health_response.status_code == 200
 
 
-def test_generate_image_accepts_five_concurrent_requests_without_rate_limiting(
+def test_generate_image_accepts_ten_concurrent_requests_without_rate_limiting(
     monkeypatch,
 ):
     request_body = {
@@ -82,11 +82,11 @@ def test_generate_image_accepts_five_concurrent_requests_without_rate_limiting(
         "frame_font_size": 8,
         "output_font_size": 10,
     }
-    start_requests = Barrier(5)
+    start_requests = Barrier(10)
     monkeypatch.setattr(
         main_module,
         "run_image_generation_in_process",
-        lambda *args, **kwargs: b"png",
+        lambda *args, **kwargs: (time.sleep(0.1), b"png")[1],
     )
 
     def post_image():
@@ -94,10 +94,10 @@ def test_generate_image_accepts_five_concurrent_requests_without_rate_limiting(
         with TestClient(app) as client:
             return client.post("/images", json=request_body)
 
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        responses = list(executor.map(lambda _: post_image(), range(5)))
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        responses = list(executor.map(lambda _: post_image(), range(10)))
 
-    assert [response.status_code for response in responses] == [200] * 5
+    assert [response.status_code for response in responses] == [200] * 10
     assert all(response.status_code != 429 for response in responses)
 
 
