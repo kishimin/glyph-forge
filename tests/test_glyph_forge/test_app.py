@@ -91,11 +91,11 @@ def test_generate_image_accepts_ten_concurrent_requests_without_rate_limiting(
 
     def post_image():
         start_requests.wait()
-        with TestClient(app) as client:
-            return client.post("/images", json=request_body)
+        return client.post("/images", json=request_body)
 
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        responses = list(executor.map(lambda _: post_image(), range(10)))
+    with TestClient(app) as client:
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            responses = list(executor.map(lambda _: post_image(), range(10)))
 
     assert [response.status_code for response in responses] == [200] * 10
     assert all(response.status_code != 429 for response in responses)
