@@ -57,7 +57,15 @@ def _resolve_cell_size(
             max_text_width = max(max_text_width, right - left)
             max_text_height = max(max_text_height, bottom - top)
 
-    return max(font_size, max_text_width, max_text_height)
+    # Leave a one-pixel margin on each side when a glyph reaches the nominal
+    # font size. Without this safety margin, edge-aligned strokes (for example
+    # the top horizontal stroke of 「日」) can be clipped by the cell boundary.
+    glyph_safety_margin = 2
+    return max(
+        font_size,
+        max_text_width + glyph_safety_margin,
+        max_text_height + glyph_safety_margin,
+    )
 
 
 def resolve_text_cell_size(text: str, font_size: int) -> int:
