@@ -60,6 +60,22 @@ def test_render_text_image_centers_character_in_cell():
     assert img.width - right - 1 > 10
 
 
+def test_render_text_image_keeps_japanese_glyph_away_from_cell_edges():
+    img = render_text_image(
+        input_text="日",
+        column_count=1,
+        row_count=1,
+        font_size=100,
+    )
+
+    left, right, top, bottom = _drawn_bounds(img)
+
+    assert left > 0
+    assert right < img.width - 1
+    assert top > 0
+    assert bottom < img.height - 1
+
+
 def test_render_text_image_keeps_multicodepoint_graphemes_in_one_cell(monkeypatch):
     astronaut = "👩‍🚀"
     captured_grid = None
