@@ -1,3 +1,4 @@
+from importlib.metadata import version
 from io import BytesIO
 
 import anyio
@@ -46,7 +47,7 @@ from glyph_forge.services.settings import (
     GlyphForgeConfig,
 )
 
-app = FastAPI()
+app = FastAPI(version=version("glyph_forge"))
 app.state.image_concurrency_limiter = ConcurrentRequestLimiter(
     max_concurrent=MAX_CONCURRENT_IMAGE_REQUESTS,
     max_waiting=MAX_WAITING_IMAGE_REQUESTS,

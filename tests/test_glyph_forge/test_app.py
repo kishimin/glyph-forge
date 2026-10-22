@@ -1,5 +1,6 @@
 import time
 from concurrent.futures import ThreadPoolExecutor
+from importlib.metadata import version
 from io import BytesIO
 from threading import Barrier, Event
 
@@ -26,6 +27,15 @@ def test_health_returns_ok_for_monitoring():
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_openapi_reports_the_installed_package_version():
+    client = TestClient(app)
+
+    response = client.get("/openapi.json")
+
+    assert response.status_code == 200
+    assert response.json()["info"]["version"] == version("glyph_forge")
 
 
 def test_generate_image_accepts_compact_request():
