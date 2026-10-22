@@ -7,6 +7,7 @@ from glyph_forge.services.glyph_art_renderer import (
     _render_center_frame_mask,
     render_background_image,
     render_glyph_art_image,
+    render_image_frame_art_image,
     render_x_icon_image,
 )
 from glyph_forge.services.settings import GlyphForgeConfig
@@ -120,4 +121,24 @@ def test_standard_image_distinguishes_emoji_fill_characters():
     first = render_glyph_art_image("KA", "😀", " ", config=config)
     second = render_glyph_art_image("KA", "🚀", " ", config=config)
 
+    assert (first.size, first.tobytes()) != (second.size, second.tobytes())
+
+
+@pytest.mark.parametrize("canvas_size", [(800, 400), (1000, 1000)])
+def test_standard_emoji_frame_fits_requested_canvas_with_default_config(canvas_size):
+    first = render_glyph_art_image("😀", "x", " ", max_output_size=canvas_size)
+    second = render_glyph_art_image("🚀", "x", " ", max_output_size=canvas_size)
+
+    assert first.size == second.size == canvas_size
+    assert first.getbbox() is not None
+    assert first.tobytes() != second.tobytes()
+
+
+def test_uploaded_frame_image_distinguishes_emoji_fill_with_default_config():
+    frame = Image.new("L", (2, 2), 0)
+    frame.putpixel((1, 1), 255)
+    first = render_image_frame_art_image(frame, "😀", " ")
+    second = render_image_frame_art_image(frame, "🚀", " ")
+
+    assert first.getbbox() is not None
     assert (first.size, first.tobytes()) != (second.size, second.tobytes())

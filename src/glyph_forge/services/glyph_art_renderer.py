@@ -1,6 +1,6 @@
 from math import ceil
 
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFilter
 
 from glyph_forge.services.glyph_text_grid import binary_grid_to_text_grid
 from glyph_forge.services.image_threshold import (
@@ -17,11 +17,12 @@ from glyph_forge.services.settings import (
     GlyphForgeConfig,
 )
 from glyph_forge.services.text_image_renderer import (
-    load_font,
+    draw_text,
     render_text_grid_image,
     render_text_image,
     resolve_text_cell_size,
     split_text_lines,
+    text_bbox,
 )
 from glyph_forge.services.unicode_text import repeat_graphemes, split_graphemes
 
@@ -80,8 +81,7 @@ def _largest_fitting_font_size(
     best_font_size = 1
     while low <= high:
         font_size = (low + high) // 2
-        font = load_font(font_size)
-        text_size = _visible_frame_text_size(text_lines, font)
+        text_size = _visible_frame_text_size(text_lines, font_size)
         if text_size[0] <= canvas_size[0] and text_size[1] <= canvas_size[1]:
             best_font_size = font_size
             low = font_size + 1
@@ -135,19 +135,19 @@ def _fit_frame_image_to_output_grid(
 
 def _visible_frame_text_size(
     text_lines: list[str],
-    font: ImageFont.FreeTypeFont,
+    font_size: int,
 ) -> tuple[int, int]:
-    line_sizes = [_text_bbox_size(line, font) for line in text_lines]
-    line_height = max((height for _, height in line_sizes), default=font.size)
+    line_sizes = [_text_bbox_size(line, font_size) for line in text_lines]
+    line_height = max((height for _, height in line_sizes), default=font_size)
     line_spacing = max(1, round(line_height * VISIBLE_FRAME_TEXT_LINE_SPACING_RATIO))
-    width = max((width for width, _ in line_sizes), default=font.size)
+    width = max((width for width, _ in line_sizes), default=font_size)
     height = line_height + line_spacing * (len(text_lines) - 1)
     return max(1, round(width)), max(1, round(height))
 
 
-def _text_bbox_size(text: str, font: ImageFont.FreeTypeFont) -> tuple[int, int]:
-    left, top, right, bottom = font.getbbox(text)
-    return right - left, bottom - top
+def _text_bbox_size(text: str, font_size: int) -> tuple[int, int]:
+    left, top, right, bottom = text_bbox(text, font_size)
+    return ceil(right - left), ceil(bottom - top)
 
 
 def _render_center_frame_mask(
@@ -157,25 +157,25 @@ def _render_center_frame_mask(
 ) -> Image.Image:
     text_lines = split_text_lines(frame_text, max_chars_per_line)
     font_size = _largest_fitting_font_size(text_lines, canvas_size)
-    return _draw_frame_mask(text_lines, load_font(font_size), canvas_size)
+    return _draw_frame_mask(text_lines, font_size, canvas_size)
 
 
 def _draw_frame_mask(
     text_lines: list[str],
-    font: ImageFont.FreeTypeFont,
+    font_size: int,
     canvas_size: tuple[int, int],
 ) -> Image.Image:
     mask = Image.new("L", canvas_size, 0)
     draw = ImageDraw.Draw(mask)
-    line_sizes = [_text_bbox_size(line, font) for line in text_lines]
-    line_height = max((height for _, height in line_sizes), default=font.size)
+    line_sizes = [_text_bbox_size(line, font_size) for line in text_lines]
+    line_height = max((height for _, height in line_sizes), default=font_size)
     line_spacing = max(1, round(line_height * VISIBLE_FRAME_TEXT_LINE_SPACING_RATIO))
     content_height = line_height + line_spacing * (len(text_lines) - 1)
     y = (mask.height - content_height) / 2
     for line, (line_width, _) in zip(text_lines, line_sizes):
-        left, top, _, _ = font.getbbox(line)
+        left, top, _, _ = text_bbox(line, font_size)
         x = (mask.width - line_width) / 2 - left
-        draw.text((x, y - top), line, fill=255, font=font)
+        draw_text(draw, (x, y - top), line, font_size, fill=255)
         y += line_spacing
     return mask.point(lambda alpha: 255 if alpha else 0)
 

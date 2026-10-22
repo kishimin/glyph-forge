@@ -17,6 +17,10 @@ FROM python:3.12.11-slim-bookworm AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y libfribidi0 \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd --system --gid 10001 app \
     && useradd --system --uid 10001 --gid app --no-create-home app
 

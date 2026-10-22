@@ -1,5 +1,7 @@
 from functools import lru_cache
 from importlib.resources import files
+from itertools import groupby
+from typing import Iterator
 
 import regex
 from PIL import Image, ImageDraw, ImageFont
@@ -13,7 +15,9 @@ from glyph_forge.services.settings import (
 )
 from glyph_forge.services.unicode_text import split_graphemes
 
-_EMOJI_PATTERN = regex.compile(r"\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20e3")
+_EMOJI_PATTERN = regex.compile(
+    r"\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20e3"
+)
 
 
 def split_text_lines(input_text: str, max_chars_per_line: int) -> list[str]:
@@ -38,6 +42,48 @@ def load_font(font_size: int, text: str = "") -> ImageFont.FreeTypeFont:
 def _load_font(font_size: int, font_name: str) -> ImageFont.FreeTypeFont:
     font_path = files("glyph_forge.fonts").joinpath(font_name)
     return ImageFont.truetype(str(font_path), size=font_size)
+
+
+def _font_runs(
+    text: str, font_size: int
+) -> Iterator[tuple[str, ImageFont.FreeTypeFont]]:
+    for _, graphemes in groupby(
+        split_graphemes(text),
+        key=lambda grapheme: bool(_EMOJI_PATTERN.search(grapheme)),
+    ):
+        run = "".join(graphemes)
+        yield run, load_font(font_size, run)
+
+
+def text_bbox(text: str, font_size: int) -> tuple[float, float, float, float]:
+    bounds: list[tuple[float, float, float, float]] = []
+    x = 0.0
+    for run, font in _font_runs(text, font_size):
+        left, top, right, bottom = font.getbbox(run, anchor="ls")
+        bounds.append((x + left, top, x + right, bottom))
+        x += font.getlength(run)
+    if not bounds:
+        return 0, 0, 0, 0
+    return (
+        min(left for left, _, _, _ in bounds),
+        min(top for _, top, _, _ in bounds),
+        max(right for _, _, right, _ in bounds),
+        max(bottom for _, _, _, bottom in bounds),
+    )
+
+
+def draw_text(
+    draw: ImageDraw.ImageDraw,
+    position: tuple[float, float],
+    text: str,
+    font_size: int,
+    fill: int,
+) -> None:
+    x, y = position
+    # A shared baseline keeps the two fonts aligned when a frame mixes text and emoji.
+    for run, font in _font_runs(text, font_size):
+        draw.text((x, y), run, font=font, fill=fill, anchor="ls")
+        x += font.getlength(run)
 
 
 def _centered_text_offset(

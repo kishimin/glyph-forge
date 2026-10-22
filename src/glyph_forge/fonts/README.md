@@ -11,6 +11,7 @@ Emoji use the configured text color. Font selection occurs per grapheme, so
 ordinary letters and Japanese text retain the existing font. Emoji coverage
 depends on this bundled font version. Combined sequences such as ZWJ emoji and
 flags require Pillow's Raqm layout support for composition; without it, Pillow
-may display their components together within one cell. Official Linux Pillow
-wheels provide Raqm; verify availability with
+may display their components together within one cell. The production container
+installs `libfribidi0` to enable Raqm in the Linux Pillow wheel. Local environments
+need the corresponding FriBiDi library; verify availability with
 `python -c "from PIL import features; print(features.check_feature('raqm'))"`.
