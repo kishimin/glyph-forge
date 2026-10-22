@@ -1,5 +1,7 @@
+from functools import lru_cache
 from importlib.resources import files
 
+import regex
 from PIL import Image, ImageDraw, ImageFont
 
 from glyph_forge.services.output_image_limits import validate_output_image_size
@@ -10,6 +12,8 @@ from glyph_forge.services.settings import (
     Color,
 )
 from glyph_forge.services.unicode_text import split_graphemes
+
+_EMOJI_PATTERN = regex.compile(r"\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20e3")
 
 
 def split_text_lines(input_text: str, max_chars_per_line: int) -> list[str]:
@@ -25,8 +29,14 @@ def split_text_lines(input_text: str, max_chars_per_line: int) -> list[str]:
     ]
 
 
-def load_font(font_size: int) -> ImageFont.FreeTypeFont:
-    font_path = files("glyph_forge.fonts").joinpath("ipaexg.ttf")
+def load_font(font_size: int, text: str = "") -> ImageFont.FreeTypeFont:
+    font_name = "NotoEmoji.ttf" if _EMOJI_PATTERN.search(text) else "ipaexg.ttf"
+    return _load_font(font_size, font_name)
+
+
+@lru_cache(maxsize=32)
+def _load_font(font_size: int, font_name: str) -> ImageFont.FreeTypeFont:
+    font_path = files("glyph_forge.fonts").joinpath(font_name)
     return ImageFont.truetype(str(font_path), size=font_size)
 
 
@@ -45,7 +55,6 @@ def _centered_text_offset(
 
 def _resolve_cell_size(
     text_grid: list[list[str]],
-    font: ImageFont.FreeTypeFont,
     font_size: int,
 ) -> int:
     max_text_width = 0
@@ -53,6 +62,7 @@ def _resolve_cell_size(
 
     for row in text_grid:
         for text in row:
+            font = load_font(font_size, text)
             left, top, right, bottom = font.getbbox(text)
             max_text_width = max(max_text_width, right - left)
             max_text_height = max(max_text_height, bottom - top)
@@ -69,8 +79,7 @@ def _resolve_cell_size(
 
 
 def resolve_text_cell_size(text: str, font_size: int) -> int:
-    font = load_font(font_size)
-    return _resolve_cell_size([split_graphemes(text)], font, font_size)
+    return _resolve_cell_size([split_graphemes(text)], font_size)
 
 
 def _draw_solid_text_cell(
@@ -115,8 +124,7 @@ def render_text_grid_image(
 ) -> Image.Image:
     row_count = len(text_grid)
     column_count = max((len(row) for row in text_grid), default=0)
-    font = load_font(font_size)
-    cell_size = _resolve_cell_size(text_grid, font, font_size)
+    cell_size = _resolve_cell_size(text_grid, font_size)
     validate_output_image_size((cell_size * column_count, cell_size * row_count))
     img = Image.new(
         IMAGE_MODE_RGBA,
@@ -129,6 +137,7 @@ def render_text_grid_image(
         for column_index, text in enumerate(row):
             color = color_grid[row_index][column_index] if color_grid else fill
             if text not in mask_cache:
+                font = load_font(font_size, text)
                 mask_cache[text] = _solid_text_mask(text, cell_size, font)
             mask = mask_cache[text]
             _draw_solid_text_cell(
