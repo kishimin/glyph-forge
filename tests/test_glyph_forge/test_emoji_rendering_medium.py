@@ -20,6 +20,16 @@ from glyph_forge.services.text_image_renderer import (
 pytestmark = pytest.mark.medium
 
 
+def test_emoji_grid_renders_native_colors_instead_of_selected_text_color():
+    image = render_text_grid_image(
+        [["🌻"]], 40, fill=(17, 93, 201), background_color=(0, 0, 0, 0)
+    )
+
+    visible_colors = {pixel[:3] for pixel in image.getdata() if pixel[3]}
+    assert len(visible_colors) > 2
+    assert (17, 93, 201) not in visible_colors
+
+
 @pytest.mark.skipif(sys.platform != "linux", reason="Production runs on Linux")
 def test_linux_runtime_supports_combined_emoji_shaping():
     assert features.check_feature("raqm")
