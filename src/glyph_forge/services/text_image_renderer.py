@@ -161,6 +161,31 @@ def _solid_text_mask(
     return mask.point(lambda alpha: 255 if alpha else 0)
 
 
+def _color_emoji_cell(text: str, cell_size: int) -> Image.Image | None:
+    font = _load_font(109, "NotoColorEmoji.ttf")
+    left, top, right, bottom = font.getbbox(text)
+    # Long unsupported sequences must not allocate an unbounded temporary bitmap.
+    if right - left > 2048 or bottom - top > 2048:
+        return None
+    glyph = Image.new("RGBA", (right - left, bottom - top))
+    ImageDraw.Draw(glyph).text((-left, -top), text, font=font, embedded_color=True)
+    bounds = glyph.getbbox()
+    cell = Image.new("RGBA", (cell_size, cell_size))
+    if bounds is None:
+        return cell
+    glyph = glyph.crop(bounds)
+    available_size = max(1, cell_size - 2)
+    scale = min(available_size / glyph.width, available_size / glyph.height)
+    glyph = glyph.resize(
+        (max(1, round(glyph.width * scale)), max(1, round(glyph.height * scale))),
+        Image.Resampling.LANCZOS,
+    )
+    cell.alpha_composite(
+        glyph, ((cell_size - glyph.width) // 2, (cell_size - glyph.height) // 2)
+    )
+    return cell
+
+
 def render_text_grid_image(
     text_grid: list[list[str]],
     font_size: int,
@@ -178,9 +203,19 @@ def render_text_grid_image(
         background_color,
     )
     mask_cache: dict[str, Image.Image] = {}
+    emoji_cache: dict[str, Image.Image | None] = {}
 
     for row_index, row in enumerate(text_grid):
         for column_index, text in enumerate(row):
+            if _EMOJI_PATTERN.search(text):
+                if text not in emoji_cache:
+                    emoji_cache[text] = _color_emoji_cell(text, cell_size)
+                emoji = emoji_cache[text]
+                if emoji is not None:
+                    img.alpha_composite(
+                        emoji, (column_index * cell_size, row_index * cell_size)
+                    )
+                    continue
             color = color_grid[row_index][column_index] if color_grid else fill
             if text not in mask_cache:
                 font = load_font(font_size, text)

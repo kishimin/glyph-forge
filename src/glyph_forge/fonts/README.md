@@ -7,7 +7,12 @@
   and copyright notice are included in `NotoEmoji-OFL.txt` and distributed with
   the package.
 
-Emoji use the configured text color. Font selection occurs per grapheme, so
+- `NotoColorEmoji.ttf`: Noto Color Emoji (SHA-256
+  `15671215ab769fdc7162a045d56fd7d7e477c51b04e6b3c761d914d8fdd6cc44`),
+  from the [Google Noto Emoji project](https://github.com/googlefonts/noto-emoji).
+  Its SIL Open Font License 1.1 is included in `NotoColorEmoji-OFL.txt`.
+
+Emoji in the output grid use their native colors. Font selection occurs per grapheme, so
 ordinary letters and Japanese text retain the existing font. Emoji coverage
 depends on this bundled font version. Combined sequences such as ZWJ emoji and
 flags require Pillow's Raqm layout support for composition; without it, Pillow

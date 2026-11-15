@@ -20,6 +20,46 @@ from glyph_forge.services.text_image_renderer import (
 pytestmark = pytest.mark.medium
 
 
+def test_emoji_grid_renders_native_colors_instead_of_selected_text_color():
+    image = render_text_grid_image(
+        [["🌻"]], 40, fill=(17, 93, 201), background_color=(0, 0, 0, 0)
+    )
+
+    visible_colors = {pixel[:3] for pixel in image.getdata() if pixel[3]}
+    assert len(visible_colors) > 2
+    assert (17, 93, 201) not in visible_colors
+
+
+def test_oversized_emoji_sequence_uses_a_bounded_monochrome_fallback():
+    sequence = "😀\u200d" * 20 + "😀"
+    image = render_text_grid_image(
+        [[sequence]], 10, fill=(17, 93, 201), background_color=(0, 0, 0, 0)
+    )
+
+    visible_colors = {pixel[:3] for pixel in image.getdata() if pixel[3]}
+    assert visible_colors == {(17, 93, 201)}
+
+
+def test_large_emoji_scales_with_the_requested_font_size():
+    small = render_text_grid_image([["🌻"]], 64, background_color=(0, 0, 0, 0))
+    large = render_text_grid_image([["🌻"]], 256, background_color=(0, 0, 0, 0))
+
+    small_bounds = small.getbbox()
+    large_bounds = large.getbbox()
+    assert small_bounds is not None and large_bounds is not None
+    assert large_bounds[3] - large_bounds[1] > 3 * (small_bounds[3] - small_bounds[1])
+
+
+@pytest.mark.parametrize(
+    "render", [render_glyph_art_image, render_x_icon_image, render_background_image]
+)
+def test_emoji_fill_uses_native_colors_in_each_output_type(render):
+    config = GlyphForgeConfig(output_font_size=32)
+    image = render("A", "🌻", " ", config=config)
+
+    assert len(set(image.convert("RGB").getdata())) > 2
+
+
 @pytest.mark.skipif(sys.platform != "linux", reason="Production runs on Linux")
 def test_linux_runtime_supports_combined_emoji_shaping():
     assert features.check_feature("raqm")
@@ -55,7 +95,7 @@ def test_emoji_fill_is_visible_colored_and_not_clipped(emoji, font_size):
     left, top, right, bottom = bounds
     assert 0 < left < right < img.width
     assert 0 < top < bottom < img.height
-    assert set(img.getdata()) == {(0, 0, 0, 0), color}
+    assert any(pixel[3] and pixel[:3] != color[:3] for pixel in img.getdata())
     assert img.crop(bounds).tobytes() != missing.crop(missing.getbbox()).tobytes()
     assert img.size == (resolve_text_cell_size(emoji, font_size),) * 2
 
@@ -69,7 +109,10 @@ def test_mixed_emoji_and_japanese_keep_separate_cells_and_colors():
     assert img.width == len(texts) * cell_size
     for column, color in enumerate(colors):
         cell = img.crop((column * cell_size, 0, (column + 1) * cell_size, cell_size))
-        assert set(cell.convert("RGB").getdata()) == {(255, 255, 255), color}
+        if texts[column] in {"😀", "🚀"}:
+            assert len(set(cell.convert("RGB").getdata())) > 2
+        else:
+            assert set(cell.convert("RGB").getdata()) == {(255, 255, 255), color}
 
 
 @pytest.mark.parametrize("text", ["A", "日", "1", "か\u3099"])
