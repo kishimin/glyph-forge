@@ -40,6 +40,16 @@ def test_oversized_emoji_sequence_uses_a_bounded_monochrome_fallback():
     assert visible_colors == {(17, 93, 201)}
 
 
+def test_large_emoji_scales_with_the_requested_font_size():
+    small = render_text_grid_image([["🌻"]], 64, background_color=(0, 0, 0, 0))
+    large = render_text_grid_image([["🌻"]], 256, background_color=(0, 0, 0, 0))
+
+    small_bounds = small.getbbox()
+    large_bounds = large.getbbox()
+    assert small_bounds is not None and large_bounds is not None
+    assert large_bounds[3] - large_bounds[1] > 3 * (small_bounds[3] - small_bounds[1])
+
+
 @pytest.mark.parametrize(
     "render", [render_glyph_art_image, render_x_icon_image, render_background_image]
 )
