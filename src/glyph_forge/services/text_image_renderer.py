@@ -174,8 +174,11 @@ def _color_emoji_cell(text: str, cell_size: int) -> Image.Image | None:
     if bounds is None:
         return cell
     glyph = glyph.crop(bounds)
-    glyph.thumbnail(
-        (max(1, cell_size - 2), max(1, cell_size - 2)), Image.Resampling.LANCZOS
+    available_size = max(1, cell_size - 2)
+    scale = min(available_size / glyph.width, available_size / glyph.height)
+    glyph = glyph.resize(
+        (max(1, round(glyph.width * scale)), max(1, round(glyph.height * scale))),
+        Image.Resampling.LANCZOS,
     )
     cell.alpha_composite(
         glyph, ((cell_size - glyph.width) // 2, (cell_size - glyph.height) // 2)
