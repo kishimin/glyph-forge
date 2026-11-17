@@ -6,12 +6,23 @@ from typing import Any, Protocol
 
 from PIL import Image
 
+from app.uploaded_image import UploadImageValidationError
+from glyph_forge.services.output_image_limits import OutputImageSizeExceeded
+
 
 class ImageGenerationTimeout(Exception):
     pass
 
 
 class ImageGenerationValueError(ValueError):
+    pass
+
+
+class ImageGenerationInvalidImage(ImageGenerationValueError):
+    pass
+
+
+class ImageGenerationOutputSizeExceeded(ImageGenerationValueError):
     pass
 
 
@@ -40,6 +51,10 @@ def _run_and_send_result(
         buffer = BytesIO()
         image.save(buffer, format="PNG")
         connection.send(("ok", buffer.getvalue()))
+    except UploadImageValidationError as error:
+        connection.send(("invalid_image", str(error)))
+    except OutputImageSizeExceeded as error:
+        connection.send(("output_size_exceeded", str(error)))
     except ValueError as error:
         connection.send(("value_error", str(error)))
     except Exception as error:
@@ -93,4 +108,8 @@ def run_image_generation_in_process(
         return payload
     if result_type == "value_error":
         raise ImageGenerationValueError(payload)
+    if result_type == "invalid_image":
+        raise ImageGenerationInvalidImage(payload)
+    if result_type == "output_size_exceeded":
+        raise ImageGenerationOutputSizeExceeded(payload)
     raise ImageGenerationWorkerError(payload)

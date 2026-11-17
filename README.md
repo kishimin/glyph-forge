@@ -225,6 +225,7 @@ with urllib.request.urlopen(request) as response:
 | `POST` | `/images`            | Generate a general glyph-art image  |
 | `POST` | `/images/x-icon`     | Generate an X profile icon image    |
 | `POST` | `/images/background` | Generate an X profile background    |
+| `POST` | `/images/frame-file` | Generate glyph art from an uploaded image |
 
 ### Request Body
 
@@ -252,6 +253,12 @@ Uploaded frame images are limited to 2 MiB, 204 px in width and height, and
 rejected. The complete multipart request is limited to the 2 MiB file plus
 64 KiB of form overhead and accepts one file. Limits and the actual image
 format are checked before decoding.
+
+For `/images/frame-file`, a 422 response includes `X-Glyph-Forge-Error` when
+the failure can be classified: `INVALID_IMAGE` for an invalid uploaded image,
+or `OUTPUT_SIZE_EXCEEDED` when the generated output exceeds its size limit.
+Other 422 responses do not necessarily include this header. Existing response
+status codes and JSON error bodies are unchanged.
 
 Image generation endpoints are intended for internal use and do not apply an
 IP-based rate limit. Each application process runs one image generation at a

@@ -57,6 +57,7 @@ def test_generate_image_accepts_compact_request():
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/png"
     assert response.content.startswith(b"\x89PNG")
+    assert "X-Glyph-Forge-Error" not in response.headers
 
 
 def test_generate_image_does_not_rate_limit_internal_requests(monkeypatch):
@@ -191,6 +192,7 @@ def test_generate_image_rejects_output_above_size_limit():
     )
 
     assert response.status_code == 422
+    assert "X-Glyph-Forge-Error" not in response.headers
     assert response.json() == {"detail": "output image width must not exceed 2048"}
 
 
@@ -320,6 +322,24 @@ def test_generate_image_from_uploaded_frame_image_rejects_invalid_file():
     )
 
     assert response.status_code == 422
+    assert response.headers["X-Glyph-Forge-Error"] == "INVALID_IMAGE"
+
+
+def test_generate_image_from_uploaded_frame_image_reports_output_size_limit():
+    client = TestClient(app)
+    upload_buffer = BytesIO()
+    Image.new("RGB", (120, 1), (255, 255, 255)).save(upload_buffer, format="PNG")
+    upload_buffer.seek(0)
+
+    response = client.post(
+        "/images/frame-file",
+        data={"inner_text": "x", "outer_text": "o"},
+        files={"frame_image": ("frame.png", upload_buffer, "image/png")},
+    )
+
+    assert response.status_code == 422
+    assert response.headers["X-Glyph-Forge-Error"] == "OUTPUT_SIZE_EXCEEDED"
+    assert response.json() == {"detail": "output image width must not exceed 2048"}
 
 
 def test_generate_image_from_uploaded_frame_image_rejects_file_above_size_limit():
@@ -339,6 +359,7 @@ def test_generate_image_from_uploaded_frame_image_rejects_file_above_size_limit(
 
     assert response.status_code == 422
     assert response.json() == {"detail": "frame_image must not exceed 2097152 bytes"}
+    assert response.headers["X-Glyph-Forge-Error"] == "INVALID_IMAGE"
 
 
 def test_generate_image_from_frame_file_rejects_oversized_multipart_body():
@@ -401,6 +422,7 @@ def test_generate_image_from_uploaded_frame_image_rejects_dimensions_above_limit
     assert response.json() == {
         "detail": "frame_image width and height must not exceed 204 pixels"
     }
+    assert response.headers["X-Glyph-Forge-Error"] == "INVALID_IMAGE"
 
 
 def test_generate_image_from_uploaded_frame_image_rejects_unsupported_actual_format():
@@ -698,6 +720,7 @@ def test_generate_image_from_frame_file_enforces_public_input_limits(
     )
 
     assert response.status_code == 422
+    assert "X-Glyph-Forge-Error" not in response.headers
 
 
 @pytest.mark.parametrize(

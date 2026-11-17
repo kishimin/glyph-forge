@@ -7,6 +7,8 @@ from PIL import Image
 from starlette.datastructures import UploadFile
 
 from app.image_worker import (
+    ImageGenerationInvalidImage,
+    ImageGenerationOutputSizeExceeded,
     ImageGenerationTimeout,
     ImageGenerationValueError,
     run_image_generation_in_process,
@@ -32,6 +34,7 @@ from app.schemas import (
 )
 from app.uploaded_image import (
     MAX_UPLOADED_IMAGE_BYTES,
+    UploadImageValidationError,
     decode_uploaded_image,
     read_uploaded_image_bytes,
 )
@@ -74,7 +77,9 @@ def _png_response(image_bytes: bytes) -> responses.StreamingResponse:
     return responses.StreamingResponse(BytesIO(image_bytes), media_type="image/png")
 
 
-async def _run_image_generation(render_image, *args, **kwargs):
+async def _run_image_generation(
+    render_image, *args, classify_image_errors=False, **kwargs
+):
     try:
         image_bytes = await anyio.to_thread.run_sync(
             run_image_generation_in_process,
@@ -86,7 +91,17 @@ async def _run_image_generation(render_image, *args, **kwargs):
     except ImageGenerationTimeout:
         return image_generation_capacity_response()
     except ImageGenerationValueError as error:
-        raise HTTPException(status_code=422, detail=str(error)) from error
+        code = None
+        if classify_image_errors and isinstance(error, ImageGenerationInvalidImage):
+            code = "INVALID_IMAGE"
+        elif classify_image_errors and isinstance(
+            error, ImageGenerationOutputSizeExceeded
+        ):
+            code = "OUTPUT_SIZE_EXCEEDED"
+        headers = {"X-Glyph-Forge-Error": code} if code else None
+        raise HTTPException(
+            status_code=422, detail=str(error), headers=headers
+        ) from error
     return _png_response(image_bytes)
 
 
@@ -218,11 +233,18 @@ async def generate_image_from_frame_file(request: Request):
             inner_text,
             outer_text,
             config,
+            classify_image_errors=True,
         )
     except RequestBodyTooLarge as error:
         raise HTTPException(
             status_code=413,
             detail="request body is too large",
+        ) from error
+    except UploadImageValidationError as error:
+        raise HTTPException(
+            status_code=422,
+            detail=str(error),
+            headers={"X-Glyph-Forge-Error": "INVALID_IMAGE"},
         ) from error
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
