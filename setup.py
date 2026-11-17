@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="glyph_forge",
-    version="1.0.6",
+    version="1.0.7",
     description="generate character art by many character",
     author="kishimin",
     author_email="r8a1wu2@gmail.com",
