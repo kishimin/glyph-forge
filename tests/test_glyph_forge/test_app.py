@@ -55,6 +55,9 @@ def test_openapi_describes_frame_file_upload():
         "outer_color",
         "output_font_size",
     }
+    assert schema["properties"]["output_font_size"]["default"] == 20
+    assert schema["properties"]["output_font_size"]["minimum"] == 10
+    assert schema["properties"]["output_font_size"]["maximum"] == 64
     assert "image/png" in operation["responses"]["200"]["content"]
 
 

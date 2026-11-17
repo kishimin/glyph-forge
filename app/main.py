@@ -206,7 +206,41 @@ async def generate_background_image(generate_image_request: GenerateImageRequest
     )
 
 
-@app.post("/images/frame-file")
+@app.post(
+    "/images/frame-file",
+    response_class=responses.Response,
+    responses={
+        200: {
+            "content": {"image/png": {"schema": {"type": "string", "format": "binary"}}}
+        }
+    },
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "multipart/form-data": {
+                    "schema": {
+                        "type": "object",
+                        "required": ["frame_image", "inner_text", "outer_text"],
+                        "properties": {
+                            "frame_image": {"type": "string", "format": "binary"},
+                            "inner_text": {"type": "string"},
+                            "outer_text": {"type": "string"},
+                            "inner_color": {"type": "string", "example": "0,0,0"},
+                            "outer_color": {"type": "string", "example": "255,255,255"},
+                            "output_font_size": {
+                                "type": "integer",
+                                "default": DEFAULT_OUTPUT_FONT_SIZE,
+                                "minimum": MIN_OUTPUT_FONT_SIZE,
+                                "maximum": MAX_OUTPUT_FONT_SIZE,
+                            },
+                        },
+                    }
+                }
+            },
+        }
+    },
+)
 async def generate_image_from_frame_file(request: Request):
     try:
         limited_request = request_with_body_limit(
