@@ -38,6 +38,29 @@ def test_openapi_reports_the_installed_package_version():
     assert response.json()["info"]["version"] == version("glyph_forge")
 
 
+def test_openapi_describes_frame_file_upload():
+    client = TestClient(app)
+
+    response = client.get("/openapi.json")
+
+    operation = response.json()["paths"]["/images/frame-file"]["post"]
+    schema = operation["requestBody"]["content"]["multipart/form-data"]["schema"]
+    assert set(schema["required"]) == {"frame_image", "inner_text", "outer_text"}
+    assert schema["properties"]["frame_image"] == {"type": "string", "format": "binary"}
+    assert set(schema["properties"]) == {
+        "frame_image",
+        "inner_text",
+        "outer_text",
+        "inner_color",
+        "outer_color",
+        "output_font_size",
+    }
+    assert schema["properties"]["output_font_size"]["default"] == 20
+    assert schema["properties"]["output_font_size"]["minimum"] == 10
+    assert schema["properties"]["output_font_size"]["maximum"] == 64
+    assert "image/png" in operation["responses"]["200"]["content"]
+
+
 def test_generate_image_accepts_compact_request():
     client = TestClient(app)
 
